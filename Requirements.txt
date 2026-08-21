@@ -3,3 +3,6 @@ requests
 deep-translator
 jdatetime
 pyTelegramBotAPI
+PIL
+pathlib
+pymupdf

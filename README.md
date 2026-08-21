@@ -12,6 +12,7 @@ A multifunctional Telegram bot built with Python and pyTelegramBotAPI, designed 
 - 🎲 Lottery Tool — Randomly select numbers or participants.
 - 🌐 Translator — Translate text and supported documents.
 - 🧰 Multi-Tool Menu — Access all available tools through an easy-to-use Telegram interface.
+- 🔁 Format converter — Convert image format
 
 🔐 Required Channel Membership
 

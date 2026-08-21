@@ -9,6 +9,10 @@ import random
 from datetime import date
 from deep_translator import GoogleTranslator
 import jdatetime
+from PIL import Image
+import pathlib
+import pymupdf
+from io import BytesIO
 
 # Average tool
  
@@ -293,4 +297,27 @@ def lottery(user_text):
     choice = random.choice(dish)
     return choice
     
-                        
+# Format converter tool
+
+def png_jpg(user_image_bytes):
+    try:
+        img = Image.open(BytesIO(user_image_bytes))
+        output = BytesIO()
+        img = img.convert("RGB")
+        img.save(output, format="JPEG")
+        output.seek(0)
+        output.name = "converted.jpg"
+        return output
+    except:
+        return None                        
+
+def jpg_png(user_image_bytes):
+    try:
+        img = Image.open(BytesIO(user_image_bytes))
+        output = BytesIO()
+        img.save(output, format="PNG")
+        output.seek(0)
+        output.name = "converted.png"
+        return output
+    except:
+        return None

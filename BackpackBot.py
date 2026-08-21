@@ -7,6 +7,7 @@ from Backpack import PasswordGeneratorAbstract, NumbericPasswordGenerator, Lette
 from Backpack import translator
 from Backpack import lottery
 from Backpack import shamsi_date_difference
+from Backpack import png_jpg, jpg_png
 
 # Some messages were too long so i created txt files and wrote them there
 with open("startmessage.txt", "r", encoding= "utf-8") as file:
@@ -67,11 +68,12 @@ password_button = types.KeyboardButton("تولید رمز")
 date_difference_button = types.KeyboardButton("اختلاف تاریخ")
 translate_button = types.KeyboardButton("ترجمه")
 lottery_button = types.KeyboardButton("قرعه کشی")
+format_converter_button = types.KeyboardButton("تبدیل فرمت")
 keyboard.add(
 	average_button, bmi_button,
 	currency_button, password_button,
 	date_difference_button, translate_button,
-	lottery_button
+	lottery_button, format_converter_button,
 )
 
 # Starting the bot for the first time or reaction to /start
@@ -687,7 +689,66 @@ def do_lottery_again(call):
 	Cancel_markup.add(Cancel_button, next_choose_button)
 
 	bot.send_message(chat_id, bot_choice, reply_markup= Cancel_markup)
-	
+
+
+# Format converter button run
+@bot.message_handler(func= lambda message: message.text == "تبدیل فرمت")
+def get_convert_type(message):
+	format_converter_keyboard = types.ReplyKeyboardMarkup(row_width=1, resize_keyboard= True)
+	png_jpg_button = types.KeyboardButton("تبدیل PNG به JPG")
+	jpg_png_button = types.KeyboardButton("تبدیل JPG به PNG")
+	cancel_button = types.KeyboardButton("لغو")
+	format_converter_keyboard.add(
+		png_jpg_button,
+		jpg_png_button,
+		cancel_button,
+	)
+
+	bot.reply_to(message, "نوع تبدیل را انتخاب کنید", reply_markup= format_converter_keyboard)
+	bot.register_next_step_handler(message, check_convert_type)
+
+def check_convert_type(message):
+	if message.text not in ["تبدیل PNG به JPG", "تبدیل JPG به PNG", "لغو"]:
+		bot.reply_to(message, "لطفا از منوی زیر انتخاب کنید")
+		bot.register_next_step_handler(message, check_convert_type)
+	elif message.text == "لغو":		
+		bot.clear_step_handler_by_chat_id(message.chat.id)
+		bot.send_message(message.chat.id, "ابزار مورد نظر را انتخاب کنید", reply_markup= keyboard)
+	else:
+		user_demand = message.text
+		get_user_content(message, user_demand)	
+
+def get_user_content(message, user_demand):
+		bot.reply_to(message, "از قسمت File عکس خود را با فرمت Document ارسال کنید")
+		bot.register_next_step_handler(message, start_converting, user_demand)
+
+def start_converting(message, user_demand):
+	if message.content_type not in ["document"] and message.content_type != "text":
+		bot.reply_to(message, "لطفا عکس مورد نظر را به صورت فایل یا همان Document ارسال کنید")
+		get_user_content(message, user_demand)
+	elif message.content_type == "text" and message.text == "لغو":
+		bot.clear_step_handler_by_chat_id(message.chat.id)
+		bot.send_message(message.chat.id, "ابزار مورد نظر را انتخاب کنید", reply_markup= keyboard)	
+	elif user_demand == "تبدیل PNG به JPG":		
+		file_info = bot.get_file(message.document.file_id)
+		user_image_bytes = bot.download_file(file_info.file_path)
+		final_image = png_jpg(user_image_bytes)
+		if final_image is not None:
+			bot.send_chat_action(message.chat.id, "upload_document")
+			bot.send_document(message.chat.id, final_image, reply_markup= keyboard)
+		else:
+			bot.send_message(message.chat.id, "خطا در تبدیل فرمت", reply_markup= keyboard)
+	elif user_demand == "تبدیل JPG به PNG":
+		file_info = bot.get_file(message.document.file_id)
+		user_image_bytes = bot.download_file(file_info.file_path)
+		final_image = jpg_png(user_image_bytes)
+		if final_image is not None:
+			bot.send_chat_action(message.chat.id, "upload_document")
+			bot.send_document(message.chat.id, final_image, reply_markup= keyboard)
+		else:
+			bot.send_message(message.chat.id, "خطا در تبدیل فرمت", reply_markup= keyboard)	
+
+
 
 # When users send irrelevant messages
 @bot.message_handler(func=lambda message: True)
