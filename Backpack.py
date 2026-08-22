@@ -13,6 +13,7 @@ from PIL import Image
 import pathlib
 import pymupdf
 from io import BytesIO
+import zipfile
 
 # Average tool
  
@@ -321,3 +322,28 @@ def jpg_png(user_image_bytes):
         return output
     except:
         return None
+
+def pdf_png(user_pdf):
+   try: 
+       pdf = pymupdf.open(stream= user_pdf, filetype= "pdf")
+       images = []
+       for page in pdf:
+           image = page.get_pixmap(dpi= 150)
+           images.append(image.tobytes("png"))
+       return images
+   except:
+        return None
+
+def create_zip_file(images):
+    try:
+        zip_buffer = BytesIO()
+
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            for index, image in enumerate(images, start= 1):
+                zip_file.writestr(f"page{index}.png", image)
+
+        zip_buffer.seek(0)
+        zip_buffer.name = "Converted.zip"
+        return zip_buffer
+    except:
+        return None                    

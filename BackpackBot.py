@@ -7,7 +7,7 @@ from Backpack import PasswordGeneratorAbstract, NumbericPasswordGenerator, Lette
 from Backpack import translator
 from Backpack import lottery
 from Backpack import shamsi_date_difference
-from Backpack import png_jpg, jpg_png
+from Backpack import png_jpg, jpg_png, pdf_png, create_zip_file
 
 # Some messages were too long so i created txt files and wrote them there
 with open("startmessage.txt", "r", encoding= "utf-8") as file:
@@ -697,18 +697,22 @@ def get_convert_type(message):
 	format_converter_keyboard = types.ReplyKeyboardMarkup(row_width=1, resize_keyboard= True)
 	png_jpg_button = types.KeyboardButton("تبدیل PNG به JPG")
 	jpg_png_button = types.KeyboardButton("تبدیل JPG به PNG")
+	pdf_png_button = types.KeyboardButton("تبدیل PDF به عکس")
 	cancel_button = types.KeyboardButton("لغو")
 	format_converter_keyboard.add(
 		png_jpg_button,
 		jpg_png_button,
+		pdf_png_button,
 		cancel_button,
 	)
-
-	bot.reply_to(message, "نوع تبدیل را انتخاب کنید", reply_markup= format_converter_keyboard)
-	bot.register_next_step_handler(message, check_convert_type)
+	if not check_membership(message.from_user.id):
+		send_membership_message(message.chat.id)
+	else:	
+		bot.reply_to(message, "نوع تبدیل را انتخاب کنید", reply_markup= format_converter_keyboard)
+		bot.register_next_step_handler(message, check_convert_type)
 
 def check_convert_type(message):
-	if message.text not in ["تبدیل PNG به JPG", "تبدیل JPG به PNG", "لغو"]:
+	if message.text not in ["تبدیل PNG به JPG", "تبدیل JPG به PNG", "تبدیل PDF به عکس", "لغو"]:
 		bot.reply_to(message, "لطفا از منوی زیر انتخاب کنید")
 		bot.register_next_step_handler(message, check_convert_type)
 	elif message.text == "لغو":		
@@ -724,7 +728,7 @@ def get_user_content(message, user_demand):
 
 def start_converting(message, user_demand):
 	if message.content_type not in ["document"] and message.content_type != "text":
-		bot.reply_to(message, "لطفا عکس مورد نظر را به صورت فایل یا همان Document ارسال کنید")
+		bot.reply_to(message, "لطفا فایل خود را به صورت Document ارسال کنید")
 		get_user_content(message, user_demand)
 	elif message.content_type == "text" and message.text == "لغو":
 		bot.clear_step_handler_by_chat_id(message.chat.id)
@@ -745,6 +749,19 @@ def start_converting(message, user_demand):
 		if final_image is not None:
 			bot.send_chat_action(message.chat.id, "upload_document")
 			bot.send_document(message.chat.id, final_image, reply_markup= keyboard)
+		else:
+			bot.send_message(message.chat.id, "خطا در تبدیل فرمت", reply_markup= keyboard)
+	elif user_demand == "تبدیل PDF به عکس":
+		file_info = bot.get_file(message.document.file_id)
+		user_pdf = bot.download_file(file_info.file_path)
+		images = pdf_png(user_pdf)
+		if images is not None:
+			compressed_images = create_zip_file(images)
+			if compressed_images is not None:
+				bot.send_chat_action(message.chat.id, "upload_document")
+				bot.send_document(message.chat.id, compressed_images, reply_markup= keyboard)
+			else:
+				bot.send_message(message.chat.id, "خطا در فشرده سازی و ارسال فایل")	
 		else:
 			bot.send_message(message.chat.id, "خطا در تبدیل فرمت", reply_markup= keyboard)	
 
