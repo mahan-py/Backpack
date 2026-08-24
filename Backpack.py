@@ -14,6 +14,7 @@ import pathlib
 import pymupdf
 from io import BytesIO
 import zipfile
+from natsort import natsorted
 
 # Average tool
  
@@ -143,7 +144,34 @@ def prices(currency_name):
             price2 = soup.find("span", attrs={"class": "text-body-large"}).text
             return (f"قیمت ریپل {price2} تومان\nبرابر با {price1} تتر")
         except:
-            return ("مشکلی پیش آمد ، اتصال به اینترنت را بررسی کنید")                                                    
+            return ("مشکلی پیش آمد ، اتصال به اینترنت را بررسی کنید")
+    elif currency_name.upper() == "NOTCOIN" or currency_name == "نات کوین":
+        try:
+            site = requests.get("https://nobitex.ir/buy/not/")
+            soup = BeautifulSoup(site.text, "html.parser")
+            price1 = soup.find("span", attrs={"class": "text-headline-large"}).text
+            price2 = soup.find("span", attrs={"class": "text-body-large"}).text
+            return (f"قیمت نات کوین {price2} تومان\nبرابر با {price1} تتر")
+        except:
+            return ("مشکلی پیش آمد ، اتصال به اینترنت را بررسی کنید")
+    elif currency_name.upper() == "DOGS" or currency_name == "داگز":
+        try:
+            site = requests.get("https://nobitex.ir/buy/dogs/")
+            soup = BeautifulSoup(site.text, "html.parser")
+            price1 = soup.find("span", attrs={"class": "text-headline-large"}).text
+            price2 = soup.find("span", attrs={"class": "text-body-large"}).text
+            return (f"قیمت داگز {price2} تومان\nبرابر با {price1} تتر")
+        except:
+            return ("مشکلی پیش آمد ، اتصال به اینترنت را بررسی کنید")
+    elif currency_name.upper() == "CARDANO" or currency_name == "کاردانو":
+        try:
+            site = requests.get("https://nobitex.ir/price/ada/")
+            soup = BeautifulSoup(site.text, "html.parser")
+            price1 = soup.find("span", attrs={"class": "text-headline-large"}).text
+            price2 = soup.find("span", attrs={"class": "text-body-large"}).text
+            return (f"قیمت کاردانو {price2} تومان\nبرابر با {price1} تتر")
+        except:
+            return ("مشکلی پیش آمد ، اتصال به اینترنت را بررسی کنید")                                                                            
     else:
         return ("اطلاعاتی درمورد این ارز ندارم")            
     
@@ -333,6 +361,31 @@ def pdf_png(user_pdf):
        return images
    except:
         return None
+
+def image_pdf(user_zipped_file):
+    try:
+        user_zipped_file = BytesIO(user_zipped_file)
+        images = []
+        with zipfile.ZipFile(user_zipped_file, "r") as zipped_file:
+            file_names = natsorted(zipped_file.namelist())
+            for file_name in file_names:
+                if file_name.lower().endswith((".jpg", ".png", ".jpeg", ".webp")):
+                    image_data = zipped_file.read(file_name)
+                    image_file = BytesIO(image_data)
+                    img = Image.open(image_file)
+                    img.load()
+                    if img.mode != "RGB":
+                        img = img.convert("RGB")
+                    images.append(img)        
+        
+        pdf_file = BytesIO()
+        images[0].save(pdf_file, format= "PDF", save_all= True, append_images = images[1:])
+        pdf_file.name = "Converted.pdf"
+        pdf_file.seek(0)
+        return pdf_file
+    except:
+        return None    
+
 
 def create_zip_file(images):
     try:

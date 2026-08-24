@@ -7,7 +7,7 @@ from Backpack import PasswordGeneratorAbstract, NumbericPasswordGenerator, Lette
 from Backpack import translator
 from Backpack import lottery
 from Backpack import shamsi_date_difference
-from Backpack import png_jpg, jpg_png, pdf_png, create_zip_file
+from Backpack import png_jpg, jpg_png, pdf_png, create_zip_file, image_pdf
 
 # Some messages were too long so i created txt files and wrote them there
 with open("startmessage.txt", "r", encoding= "utf-8") as file:
@@ -665,15 +665,14 @@ lottery_users = {}
 def do_lottery(message):
 
 	Cancel_markup = types.InlineKeyboardMarkup()
-	Cancel_button = types.InlineKeyboardButton("لغو", callback_data= "cancel", style= "danger")
+	Cancel_button = types.InlineKeyboardButton("لغو", callback_data= "cancel_lottery", style= "danger")
 	next_choose_button = types.InlineKeyboardButton("دوباره", callback_data= "do_lottery_again")
 	Cancel_markup.add(Cancel_button, next_choose_button)
 
 	user_text = message.text
 	lottery_users[message.chat.id] = user_text
 	bot_choice = lottery(user_text)
-	bot.send_message(message.chat.id, bot_choice, reply_markup= Cancel_markup)
-	bot.register_next_step_handler(user_text, do_lottery_again)
+	bot.send_message(message.chat.id, f"انتخاب رندوم: {bot_choice}", reply_markup= Cancel_markup)
 
 # Related to lottery, when users want to do lottery again	
 @bot.callback_query_handler(func= lambda call: call.data == "do_lottery_again")	
@@ -684,11 +683,19 @@ def do_lottery_again(call):
 	bot_choice = lottery(user_text)
 
 	Cancel_markup = types.InlineKeyboardMarkup()
-	Cancel_button = types.InlineKeyboardButton("لغو", callback_data= "cancel", style= "danger")
+	Cancel_button = types.InlineKeyboardButton("لغو", callback_data= "cancel_lottery", style= "danger")
 	next_choose_button = types.InlineKeyboardButton("دوباره", callback_data= "do_lottery_again")
 	Cancel_markup.add(Cancel_button, next_choose_button)
 
-	bot.send_message(chat_id, bot_choice, reply_markup= Cancel_markup)
+	bot.send_message(chat_id, f"انتخاب رندوم: {bot_choice}", reply_markup= Cancel_markup)
+
+@bot.callback_query_handler(func= lambda call: call.data == "cancel_lottery")
+def cancel_lottery(call):
+	bot.clear_step_handler_by_chat_id(call.message.chat.id)
+	chat_id = call.message.chat.id
+	lottery_users.pop(chat_id, None)
+	bot.answer_callback_query(call.id)
+	bot.send_message(call.message.chat.id, "ابزار مورد نظر را انتخاب کنید", reply_markup= keyboard)	
 
 
 # Format converter button run
@@ -698,11 +705,13 @@ def get_convert_type(message):
 	png_jpg_button = types.KeyboardButton("تبدیل PNG به JPG")
 	jpg_png_button = types.KeyboardButton("تبدیل JPG به PNG")
 	pdf_png_button = types.KeyboardButton("تبدیل PDF به عکس")
+	image_pdf_button = types.KeyboardButton("تبدیل عکس به PDF")
 	cancel_button = types.KeyboardButton("لغو")
 	format_converter_keyboard.add(
 		png_jpg_button,
 		jpg_png_button,
 		pdf_png_button,
+		image_pdf_button,
 		cancel_button,
 	)
 	if not check_membership(message.from_user.id):
@@ -712,7 +721,7 @@ def get_convert_type(message):
 		bot.register_next_step_handler(message, check_convert_type)
 
 def check_convert_type(message):
-	if message.text not in ["تبدیل PNG به JPG", "تبدیل JPG به PNG", "تبدیل PDF به عکس", "لغو"]:
+	if message.text not in ["تبدیل PNG به JPG", "تبدیل JPG به PNG", "تبدیل PDF به عکس", "تبدیل عکس به PDF", "لغو"]:
 		bot.reply_to(message, "لطفا از منوی زیر انتخاب کنید")
 		bot.register_next_step_handler(message, check_convert_type)
 	elif message.text == "لغو":		
@@ -720,15 +729,22 @@ def check_convert_type(message):
 		bot.send_message(message.chat.id, "ابزار مورد نظر را انتخاب کنید", reply_markup= keyboard)
 	else:
 		user_demand = message.text
-		get_user_content(message, user_demand)	
+		if user_demand == "تبدیل عکس به PDF":
+			get_user_zipped_file(message, user_demand)
+		else:	
+			get_user_content(message, user_demand)	
+
+def get_user_zipped_file(message, user_demand):
+	bot.reply_to(message, "فایل zip تصاویر خود را ارسال کنید. برای راهنمایی بیشتر /help ارسال کنید")
+	bot.register_next_step_handler(message, start_converting, user_demand)
 
 def get_user_content(message, user_demand):
-		bot.reply_to(message, "از قسمت File عکس خود را با فرمت Document ارسال کنید")
+		bot.reply_to(message, "از قسمت File محتوای مورد نظر را به شکل Document ارسال کنید")
 		bot.register_next_step_handler(message, start_converting, user_demand)
 
 def start_converting(message, user_demand):
 	if message.content_type not in ["document"] and message.content_type != "text":
-		bot.reply_to(message, "لطفا فایل خود را به صورت Document ارسال کنید")
+		bot.reply_to(message, "لطفا فایل خود را به شکل Document ارسال کنید")
 		get_user_content(message, user_demand)
 	elif message.content_type == "text" and message.text == "لغو":
 		bot.clear_step_handler_by_chat_id(message.chat.id)
@@ -763,7 +779,16 @@ def start_converting(message, user_demand):
 			else:
 				bot.send_message(message.chat.id, "خطا در فشرده سازی و ارسال فایل")	
 		else:
-			bot.send_message(message.chat.id, "خطا در تبدیل فرمت", reply_markup= keyboard)	
+			bot.send_message(message.chat.id, "خطا در تبدیل فرمت", reply_markup= keyboard)
+	elif user_demand == "تبدیل عکس به PDF":
+		file_info = bot.get_file(message.document.file_id)
+		user_zipped_file = bot.download_file(file_info.file_path)
+		pdf = image_pdf(user_zipped_file)
+		if pdf is not None:
+			bot.send_chat_action(message.chat.id, "upload_document")
+			bot.send_document(message.chat.id, pdf, reply_markup= keyboard)
+		else:
+			bot.send_message(message.chat.id, "خطا در ساخت PDF", reply_markup= keyboard)				
 
 
 

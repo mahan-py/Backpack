@@ -6,3 +6,4 @@ pyTelegramBotAPI
 PIL
 pathlib
 pymupdf
+natsort
