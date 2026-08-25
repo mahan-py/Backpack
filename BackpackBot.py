@@ -588,17 +588,7 @@ def restart_get_year(call):
 
 # Translater button run
 @bot.message_handler(func= lambda message: message.text == "ترجمه")
-def get_user_text(message):
-	Cancel_markup = types.InlineKeyboardMarkup()
-	Cancel_button = types.InlineKeyboardButton("لغو", callback_data= "cancel", style= "danger")
-	Cancel_markup.add(Cancel_button)
-	
-	if not check_membership(message.from_user.id):
-		send_membership_message(message.chat.id)
-	else:	
-		bot.reply_to(message, "متن خود را ارسال کنید", reply_markup= Cancel_markup)
-		bot.register_next_step_handler(message, translate_text)
-def translate_text(message):
+def start_translate_text(message):
 	target_language_keyboard = types.ReplyKeyboardMarkup(row_width=3, resize_keyboard= True)
 	language_button1 = types.KeyboardButton("فارسی")
 	language_button2 = types.KeyboardButton("انگلیسی")
@@ -614,37 +604,49 @@ def translate_text(message):
 		language_button4, language_button5, language_button6,
 		language_button7, language_button8, language_button9,
 	)
+	if not check_membership(message.from_user.id):
+		send_membership_message(message.chat.id)
+	else:	
+		bot.reply_to(message, "از منوی زیر ، زبان هدف را انخاب کنید", reply_markup= target_language_keyboard)
+		bot.register_next_step_handler(message, check_target_language)
 
-	Cancel_markup = types.InlineKeyboardMarkup()
-	Cancel_button = types.InlineKeyboardButton("لغو", callback_data= "cancel", style= "danger")
-	back_button = types.InlineKeyboardButton("مرحله قبل", callback_data= "translate_text_back", style= "primary")
-	Cancel_markup.add(Cancel_button, back_button)
+def check_target_language(message):
 
-	user_text = message.text
-	bot.reply_to(message, "از منوی زیر ، زبان هدف را انخاب کنید", reply_markup= target_language_keyboard)
-	bot.send_message(message.chat.id, "میتوانید به مرحله قبل برگردید و یا فرایند را لغو کنید", reply_markup= Cancel_markup)
-	bot.register_next_step_handler(message, check_target_language, user_text)
-def check_target_language(message, user_text):
-
-	Cancel_markup = types.InlineKeyboardMarkup()
-	Cancel_button = types.InlineKeyboardButton("لغو", callback_data= "cancel", style= "danger")
-	back_button = types.InlineKeyboardButton("مرحله قبل", callback_data= "translate_text_back", style= "primary")
-	Cancel_markup.add(Cancel_button, back_button)
-
-	if message.text not in ["انگلیسی", "فارسی", "چینی", "فرانسوی", "اسپانیایی", "آلمانی", "روسی", "ترکی", "عربی"]:
-		bot.reply_to(message, "زبان یافت نشد ، دوباره وارد کنید", reply_markup= Cancel_markup)
-		bot.register_next_step_handler(message, check_target_language, user_text)
+	if message.text not in ["انگلیسی", "فارسی", "چینی", "فرانسوی", "اسپانیایی", "آلمانی", "روسی", "ترکی", "عربی", "لغو"]:
+		bot.reply_to(message, "زبان یافت نشد ، دوباره وارد کنید")
+		bot.register_next_step_handler(message, check_target_language)
+	elif message.text == "لغو":
+		bot.clear_step_handler_by_chat_id(message.chat.id)
+		bot.send_message(message.chat.id, "ابزار مورد نظر را انتخاب کنید", reply_markup= keyboard)	
 	else:
 		user_target_language = message.text
-		result = translator(user_text, user_target_language)
-		bot.send_message(message.chat.id, result, reply_markup= keyboard)		
+		bot.send_message(message.chat.id, "متن خود را ارسال کنید")
+		bot.register_next_step_handler(message, translate_text, user_target_language)
+				
+def translate_text(message, user_target_language):
 
-# Related to translator tool, when users want to send the text again
-@bot.callback_query_handler(func= lambda call: call.data == "translate_text_back")
-def restart_get_user_text(call):
+	Cancel_markup = types.InlineKeyboardMarkup()
+	Cancel_button = types.InlineKeyboardButton("برگشت به منوی اصلی", callback_data= "cancel", style= "danger")
+	target_language_button = types.InlineKeyboardButton("تغییر زبان هدف", callback_data= "change_target_language", style= "primary")
+	Cancel_markup.add(
+		target_language_button,
+		Cancel_button,
+		)
+
+	user_text = message.text
+	result = translator(user_text, user_target_language)
+	bot.send_message(message.chat.id, result, reply_markup= Cancel_markup)
+	bot.register_next_step_handler(message, translate_text, user_target_language)
+
+
+# Related to translator tool, when users want to change the target language
+@bot.callback_query_handler(func= lambda call: call.data == "change_target_language")
+def change_target_language(call):
 	bot.clear_step_handler_by_chat_id(call.message.chat.id)
 	bot.answer_callback_query(call.id)
-	get_user_text(call.message)
+	start_translate_text(call.message)
+
+
 
 # Lottery button run
 @bot.message_handler(func= lambda message: message.text == "قرعه کشی")		
@@ -701,17 +703,15 @@ def cancel_lottery(call):
 # Format converter button run
 @bot.message_handler(func= lambda message: message.text == "تبدیل فرمت")
 def get_convert_type(message):
-	format_converter_keyboard = types.ReplyKeyboardMarkup(row_width=1, resize_keyboard= True)
+	format_converter_keyboard = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard= True)
 	png_jpg_button = types.KeyboardButton("تبدیل PNG به JPG")
 	jpg_png_button = types.KeyboardButton("تبدیل JPG به PNG")
 	pdf_png_button = types.KeyboardButton("تبدیل PDF به عکس")
 	image_pdf_button = types.KeyboardButton("تبدیل عکس به PDF")
 	cancel_button = types.KeyboardButton("لغو")
 	format_converter_keyboard.add(
-		png_jpg_button,
-		jpg_png_button,
-		pdf_png_button,
-		image_pdf_button,
+		png_jpg_button, jpg_png_button,
+		pdf_png_button, image_pdf_button,
 		cancel_button,
 	)
 	if not check_membership(message.from_user.id):
