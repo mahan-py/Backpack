@@ -8,6 +8,7 @@ from Backpack import translator
 from Backpack import lottery
 from Backpack import shamsi_date_difference
 from Backpack import png_jpg, jpg_png, pdf_png, create_zip_file, image_pdf
+from Backpack import APIprices
 
 # Some messages were too long so i created txt files and wrote them there
 with open("startmessage.txt", "r", encoding= "utf-8") as file:
@@ -77,7 +78,7 @@ keyboard.add(
 )
 
 # Starting the bot for the first time or reaction to /start
-@bot.message_handler(commands=['start'])
+@bot.message_handler(commands=['start'], func= lambda message: message.chat.type == "private")
 def send_welcome(message):
 	if not check_membership(message.from_user.id):
 		send_membership_message(message.chat.id)
@@ -85,13 +86,13 @@ def send_welcome(message):
 		bot.send_message(message.chat.id, start_message, reply_markup= keyboard)
 
 # Sends a general guide to help users
-@bot.message_handler(commands=['help'])
+@bot.message_handler(commands=['help'], func= lambda message: message.chat.type == "private")
 def send_help(message):
 	bot.reply_to(message, help_message)
 	send_welcome(message)		
 
 # Average button run
-@bot.message_handler(func= lambda message: message.text == "میانگین")
+@bot.message_handler(func= lambda message: message.text == "میانگین" and message.chat.type == "private")
 def average_tool(message):
 	Cancel_markup = types.InlineKeyboardMarkup()
 	Cancel_button = types.InlineKeyboardButton("لغو", callback_data= "cancel", style= "danger")
@@ -111,7 +112,7 @@ def get_numbers(message):
 		bot.send_message(message.chat.id, "مشکلی پیش اومد")	
 
 # BMI button run
-@bot.message_handler(func= lambda message: message.text == "BMI")
+@bot.message_handler(func= lambda message: message.text == "BMI" and message.chat.type == "private")
 def bmi_tool(message):
 	Cancel_markup = types.InlineKeyboardMarkup()
 	Cancel_button = types.InlineKeyboardButton("لغو", callback_data= "cancel", style= "danger")
@@ -180,7 +181,7 @@ def get_height(message, weight):
 		bot.register_next_step_handler(message, get_height, weight)
 
 # Prices button run
-@bot.message_handler(func= lambda message: message.text == "قیمت ارز")
+@bot.message_handler(func= lambda message: message.text == "قیمت ارز" and message.chat.type == "private")
 def choose_currency(message):
 	currency_keyboard = types.ReplyKeyboardMarkup(row_width=3, resize_keyboard=True)
 	dollar_burron = types.KeyboardButton("دلار")
@@ -216,12 +217,12 @@ def find_price(message):
 	Cancel_markup.add(Cancel_button)
 
 	currency_name = message.text
-	price = prices(currency_name)
+	price = APIprices(currency_name)
 	bot.reply_to(message, price, reply_markup= Cancel_markup)
 	bot.register_next_step_handler(message, find_price)
 
 # Password generator
-@bot.message_handler(func= lambda message: message.text == "تولید رمز")
+@bot.message_handler(func= lambda message: message.text == "تولید رمز" and message.chat.type == "private")
 def get_password_type(message):
 	password_generator_keyboard = types.ReplyKeyboardMarkup(row_width= 1, resize_keyboard= True)
 	number_button = types.KeyboardButton("فقط شامل اعداد")
@@ -289,7 +290,7 @@ def restart_get_password_type(call):
 	get_password_type(call.message)
 
 # Date difference button run
-@bot.message_handler(func= lambda message: message.text == "اختلاف تاریخ")
+@bot.message_handler(func= lambda message: message.text == "اختلاف تاریخ" and message.chat.type == "private")
 def get_date_type(message):
 	
 	Cancel_markup = types.InlineKeyboardMarkup(row_width= 2)
@@ -587,7 +588,7 @@ def restart_get_year(call):
 		
 
 # Translater button run
-@bot.message_handler(func= lambda message: message.text == "ترجمه")
+@bot.message_handler(func= lambda message: message.text == "ترجمه" and message.chat.type == "private")
 def start_translate_text(message):
 	target_language_keyboard = types.ReplyKeyboardMarkup(row_width=3, resize_keyboard= True)
 	language_button1 = types.KeyboardButton("فارسی")
@@ -649,7 +650,7 @@ def change_target_language(call):
 
 
 # Lottery button run
-@bot.message_handler(func= lambda message: message.text == "قرعه کشی")		
+@bot.message_handler(func= lambda message: message.text == "قرعه کشی" and message.chat.type == "private")		
 def get_lottery_input(message):
 
 	Cancel_markup = types.InlineKeyboardMarkup()
@@ -701,7 +702,7 @@ def cancel_lottery(call):
 
 
 # Format converter button run
-@bot.message_handler(func= lambda message: message.text == "تبدیل فرمت")
+@bot.message_handler(func= lambda message: message.text == "تبدیل فرمت" and message.chat.type == "private")
 def get_convert_type(message):
 	format_converter_keyboard = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard= True)
 	png_jpg_button = types.KeyboardButton("تبدیل PNG به JPG")
@@ -790,10 +791,17 @@ def start_converting(message, user_demand):
 		else:
 			bot.send_message(message.chat.id, "خطا در ساخت PDF", reply_markup= keyboard)				
 
+# Group message handler zone
+# Here, we handle messages those have sent by group users
+@bot.message_handler(func= lambda message: message.chat.type in ["group", "supergroup"] and message.text in ["دلار", "طلا", "تتر", "یورو", "بیت کوین", "گرام", "اتریوم", "ریپل", "سولانا", "دوج کوین", "نات کوین", "داگز", "شیبا", "کاردانو"])
+def group_currency_prices(message):
+	currency_name = message.text
+	price = APIprices(currency_name)
+	bot.send_message(message.chat.id, price)
 
 
 # When users send irrelevant messages
-@bot.message_handler(func=lambda message: True)
+@bot.message_handler(func=lambda message: True and message.chat.type == "private")
 def echo_all(message):
 	bot.reply_to(message, start_message, reply_markup= keyboard)
 

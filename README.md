@@ -6,7 +6,7 @@ A multifunctional Telegram bot built with Python and pyTelegramBotAPI, designed 
 
 - 🔐 Password Generator — Generate secure random passwords.
 - 🔢 Average Tool — Calculate the average of numbers
-- 💲 Currency Prices — Show the price of currency (like Bitcoin)
+- 💲 Currency Prices — Show the price of currency (like Bitcoin). This tool works in groups too.
 - ⚖️ BMI Calculator — Calculate BMI based on height and weight.
 - 📅 Date Difference — Calculate the difference between dates with support for Gregorian and Persian (Jalali) dates.
 - 🎲 Lottery Tool — Randomly select numbers or participants.
