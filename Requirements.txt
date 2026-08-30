@@ -7,3 +7,4 @@ PIL
 pathlib
 pymupdf
 natsort
+edge_tts

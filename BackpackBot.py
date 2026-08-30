@@ -1,4 +1,5 @@
 import telebot
+import asyncio
 from telebot import types
 from Backpack import takes_average
 from Backpack import bmi
@@ -9,6 +10,7 @@ from Backpack import lottery
 from Backpack import shamsi_date_difference
 from Backpack import png_jpg, jpg_png, pdf_png, create_zip_file, image_pdf
 from Backpack import APIprices
+import Backpack
 
 # Some messages were too long so i created txt files and wrote them there
 with open("startmessage.txt", "r", encoding= "utf-8") as file:
@@ -70,11 +72,13 @@ date_difference_button = types.KeyboardButton("اختلاف تاریخ")
 translate_button = types.KeyboardButton("ترجمه")
 lottery_button = types.KeyboardButton("قرعه کشی")
 format_converter_button = types.KeyboardButton("تبدیل فرمت")
+text_to_speech_button = types.KeyboardButton("متن به صوت")
 keyboard.add(
 	average_button, bmi_button,
 	currency_button, password_button,
 	date_difference_button, translate_button,
 	lottery_button, format_converter_button,
+	text_to_speech_button,
 )
 
 # Starting the bot for the first time or reaction to /start
@@ -790,6 +794,63 @@ def start_converting(message, user_demand):
 			bot.send_document(message.chat.id, pdf, reply_markup= keyboard)
 		else:
 			bot.send_message(message.chat.id, "خطا در ساخت PDF", reply_markup= keyboard)				
+
+# Text to speech button run
+@bot.message_handler(func= lambda message: message.text == "متن به صوت")
+def get_speech_gender(message):
+	speech_gender_markup = types.InlineKeyboardMarkup(row_width= 2)
+	man_button = types.InlineKeyboardButton("مرد", callback_data= "man_speech", style= "primary")
+	woman_button = types.InlineKeyboardButton("زن", callback_data= "woman_speech", style= "primary")
+	cancel_button = types.InlineKeyboardButton("لغو", callback_data= "cancel", style= "danger")
+	speech_gender_markup.add(
+		man_button, woman_button,
+		cancel_button,
+	)
+
+	bot.reply_to(message, "جنسیت صدا را انتخاب کنید", reply_markup= speech_gender_markup)
+
+users_speech_data = {}
+@bot.callback_query_handler(func= lambda call: call.data in ["man_speech", "woman_speech"])
+def get_text_language(call):
+	users_speech_data[call.from_user.id] = [call.data]
+	bot.answer_callback_query(call.id)
+	bot.delete_message(call.message.chat.id, call.message.message_id)
+	speech_language_markup = types.InlineKeyboardMarkup(row_width= 2)
+	en_button = types.InlineKeyboardButton("انگلیسی", callback_data= "en_speech", style= "primary")
+	fa_button = types.InlineKeyboardButton("فارسی", callback_data= "fa_speech", style= "primary")
+	cancel_button = types.InlineKeyboardButton("لغو", callback_data= "cancel", style= "danger")
+	speech_language_markup.add(
+		en_button, fa_button,
+		cancel_button,
+	)
+
+	bot.send_message(call.message.chat.id, "زبان متن مورد نظر را انتخاب کنید", reply_markup= speech_language_markup)
+
+@bot.callback_query_handler(func= lambda call: call.data in ["en_speech", "fa_speech"])
+def get_speech_text(call):
+	users_speech_data[call.from_user.id].append(call.data)
+	bot.answer_callback_query(call.id)
+	bot.delete_message(call.message.chat.id, call.message.message_id)
+	speech_text(call.message)
+	
+def speech_text(message):
+	bot.send_message(message.chat.id, "حالا متن خود را ارسال کنید")
+	bot.register_next_step_handler(message, tts)
+
+def tts(message):
+	user_id = int(message.from_user.id)
+	text = message.text
+	speech_gender = users_speech_data[message.from_user.id][0]
+	speech_language = users_speech_data[message.from_user.id][1]
+	tts_file = asyncio.run(Backpack.text_to_speech(text, speech_language, speech_gender))
+	if tts_file != "مشکلی پیش اومد":
+		bot.send_chat_action(message.chat.id, "upload_audio")
+		bot.send_audio(message.chat.id, tts_file)
+		users_speech_data.pop(user_id, None)
+	elif tts_file == "مشکلی پیش اومد":
+		bot.send_message(message.chat.id, tts_file)	
+		users_speech_data.pop(f"{message.from_user.id}", None)
+
 
 # Group message handler zone
 # Here, we handle messages those have sent by group users

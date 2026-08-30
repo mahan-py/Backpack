@@ -11,8 +11,9 @@ A multifunctional Telegram bot built with Python and pyTelegramBotAPI, designed 
 - 📅 Date Difference — Calculate the difference between dates with support for Gregorian and Persian (Jalali) dates.
 - 🎲 Lottery Tool — Randomly select numbers or participants.
 - 🌐 Translator — Translate text and supported documents.
-- 🧰 Multi-Tool Menu — Access all available tools through an easy-to-use Telegram interface.
 - 🔁 Format converter — PDF to PNG, JPG to PNG, image to PDF etc.
+- ▶️ Text-to-speech — Convert text to mp3 file
+- 🧰 Multi-Tool Menu — Access all available tools through an easy-to-use Telegram interface.
 
 🔐 Required Channel Membership
 

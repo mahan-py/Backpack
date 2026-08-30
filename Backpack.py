@@ -16,6 +16,8 @@ import pymupdf
 from io import BytesIO
 import zipfile
 from natsort import natsorted
+import edge_tts
+import asyncio
 
 # Average tool
  
@@ -571,4 +573,29 @@ def create_zip_file(images):
         zip_buffer.name = "Converted.zip"
         return zip_buffer
     except:
-        return None 
+        return None
+
+# Text to speech tool
+
+async def text_to_speech(text, language, gender):
+    try:
+        audio = BytesIO()
+        if gender == "man_speech":
+            if language == "en_speech":
+                tts = edge_tts.Communicate(text, "en-US-GuyNeural")
+            elif language == "fa_speech":
+                tts = edge_tts.Communicate(text, "fa-IR-FaridNeural")
+        elif gender == "woman_speech":
+            if language == "en_speech":
+                tts = edge_tts.Communicate(text, "en-US-AriaNeural")
+            elif language == "fa_speech":
+                tts = edge_tts.Communicate(text, "fa-IR-DilaraNeural")
+
+        async for chunk in tts.stream():
+            if chunk["type"] == "audio":
+                audio.write(chunk["data"])
+        audio.seek(0)
+        audio.name = "voice.mp3"
+        return audio
+    except:
+        return "مشکلی پیش اومد"                                            
