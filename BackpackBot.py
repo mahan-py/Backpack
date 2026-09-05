@@ -13,9 +13,6 @@ from Backpack import APIprices
 import Backpack
 
 # Some messages were too long so i created txt files and wrote them there
-with open("startmessage.txt", "r", encoding= "utf-8") as file:
-    start_message = file.read()
-
 with open("Bot_help.txt", "r", encoding= "utf-8") as file2:
 	help_message = file2.read()	
 
@@ -73,12 +70,13 @@ translate_button = types.KeyboardButton("ترجمه")
 lottery_button = types.KeyboardButton("قرعه کشی")
 format_converter_button = types.KeyboardButton("تبدیل فرمت")
 text_to_speech_button = types.KeyboardButton("متن به صوت")
+user_info_button = types.KeyboardButton("تلگرام من")
 keyboard.add(
 	average_button, bmi_button,
 	currency_button, password_button,
 	date_difference_button, translate_button,
 	lottery_button, format_converter_button,
-	text_to_speech_button,
+	text_to_speech_button, user_info_button,
 )
 
 # Starting the bot for the first time or reaction to /start
@@ -86,14 +84,14 @@ keyboard.add(
 def send_welcome(message):
 	if not check_membership(message.from_user.id):
 		send_membership_message(message.chat.id)
-	else:	
-		bot.send_message(message.chat.id, start_message, reply_markup= keyboard)
+	else:
+		user_first_name = message.from_user.first_name	
+		bot.send_message(message.chat.id, f"⚜️سلام {user_first_name} عزیز! ابزاری که نیاز داری رو از منوی زیر انتخاب کن\nبرای راهنمایی /help رو ارسال کن", reply_markup= keyboard)
 
 # Sends a general guide to help users
 @bot.message_handler(commands=['help'], func= lambda message: message.chat.type == "private")
 def send_help(message):
-	bot.reply_to(message, help_message)
-	send_welcome(message)		
+	bot.reply_to(message, help_message)		
 
 # Average button run
 @bot.message_handler(func= lambda message: message.text == "میانگین" and message.chat.type == "private")
@@ -104,7 +102,7 @@ def average_tool(message):
 	if not check_membership(message.from_user.id):
 		send_membership_message(message.chat.id)
 	else:	
-		bot.reply_to(message, "لطفا اعداد را به انگلیسی و بدون علامت ریاضی و یا حروف ارسال کنید", reply_markup= Cancel_markup)
+		bot.reply_to(message, "لطفا اعداد را بدون علامت های ریاضی و حروف ارسال کنید", reply_markup= Cancel_markup)
 		bot.register_next_step_handler(message, get_numbers)
 
 def get_numbers(message):
@@ -796,7 +794,7 @@ def start_converting(message, user_demand):
 			bot.send_message(message.chat.id, "خطا در ساخت PDF", reply_markup= keyboard)				
 
 # Text to speech button run
-@bot.message_handler(func= lambda message: message.text == "متن به صوت")
+@bot.message_handler(func= lambda message: message.text == "متن به صوت" and message.chat.type == "private")
 def get_speech_gender(message):
 	speech_gender_markup = types.InlineKeyboardMarkup(row_width= 2)
 	man_button = types.InlineKeyboardButton("مرد", callback_data= "man_speech", style= "primary")
@@ -806,8 +804,10 @@ def get_speech_gender(message):
 		man_button, woman_button,
 		cancel_button,
 	)
-
-	bot.reply_to(message, "جنسیت صدا را انتخاب کنید", reply_markup= speech_gender_markup)
+	if not check_membership(message.from_user.id):
+		send_membership_message(message.chat.id)
+	else:	
+		bot.reply_to(message, "جنسیت صدا را انتخاب کنید", reply_markup= speech_gender_markup)
 
 users_speech_data = {}
 @bot.callback_query_handler(func= lambda call: call.data in ["man_speech", "woman_speech"])
@@ -851,6 +851,21 @@ def tts(message):
 		bot.send_message(message.chat.id, tts_file)	
 		users_speech_data.pop(f"{message.from_user.id}", None)
 
+# User info button run
+@bot.message_handler(func= lambda message: message.text == "تلگرام من")
+def send_user_info(message):
+	user_first_name = message.from_user.first_name
+	user_number_id = message.from_user.id
+	user_name = message.from_user.username
+	if not check_membership(message.from_user.id):
+		send_membership_message(message.chat.id)
+	else:	
+		bot.reply_to(message, f"🔹Name: {user_first_name}\n🔹User ID: <code>{user_number_id}</code>\n🔹Username: <code>{user_name}</code>", parse_mode= "HTML")
+
+# Inline keyboard button maker run
+@bot.message_handler(func= lambda message: message.text == "دکمه شیشه ای" and message.chat.type == "private")
+def get_user_message_inline_button(message):
+	pass	
 
 # Group message handler zone
 # Here, we handle messages those have sent by group users
