@@ -71,12 +71,14 @@ lottery_button = types.KeyboardButton("قرعه کشی")
 format_converter_button = types.KeyboardButton("تبدیل فرمت")
 text_to_speech_button = types.KeyboardButton("متن به صوت")
 user_info_button = types.KeyboardButton("تلگرام من")
+inline_keyboard_maker_button = types.KeyboardButton("دکمه شیشه ای")
 keyboard.add(
 	average_button, bmi_button,
 	currency_button, password_button,
 	date_difference_button, translate_button,
 	lottery_button, format_converter_button,
 	text_to_speech_button, user_info_button,
+	inline_keyboard_maker_button,
 )
 
 # Starting the bot for the first time or reaction to /start
@@ -862,10 +864,207 @@ def send_user_info(message):
 	else:	
 		bot.reply_to(message, f"🔹Name: {user_first_name}\n🔹User ID: <code>{user_number_id}</code>\n🔹Username: <code>{user_name}</code>", parse_mode= "HTML")
 
+
 # Inline keyboard button maker run
+glass_buttons = {}
 @bot.message_handler(func= lambda message: message.text == "دکمه شیشه ای" and message.chat.type == "private")
 def get_user_message_inline_button(message):
-	pass	
+	user_id = message.from_user.id
+
+	Cancel_markup = types.InlineKeyboardMarkup()
+	Cancel_button = types.InlineKeyboardButton("لغو", callback_data= "cancel_inline_button", style= "danger")
+	Cancel_markup.add(Cancel_button)
+
+	glass_buttons[user_id] = []
+	bot.reply_to(message, "پست خود را ارسال کنید", reply_markup= Cancel_markup)
+	bot.register_next_step_handler(message, preview)
+
+
+def preview(message):
+	user_message_id = message.message_id
+	user_id = message.from_user.id
+	glass_buttons[user_id].append(user_message_id)
+			
+	add_button_markup = types.InlineKeyboardMarkup(row_width= 2)
+	add_button = types.InlineKeyboardButton("➕اضافه کردن دکمه", callback_data= "add_inline_button")
+	add_button_markup.add(add_button)				
+	
+	bot.copy_message(message.from_user.id, message.chat.id, message.message_id, reply_markup= add_button_markup)
+
+@bot.callback_query_handler(func= lambda call: call.data == "add_inline_button")
+def get_button_link(call):
+	user_id = call.from_user.id
+	chat_id = call.message.chat.id
+	from_chat_id = call.message.chat.id
+	message_id = glass_buttons[user_id][0]
+
+	Cancel_markup = types.InlineKeyboardMarkup()
+	Cancel_button = types.InlineKeyboardButton("لغو فرایند", callback_data= "cancel_inline_button", style= "danger")
+	Cancel_markup.add(Cancel_button)
+
+	bot.answer_callback_query(call.id)
+	bot.send_message(call.message.chat.id, "لینک خود را ارسال کنید", reply_markup= Cancel_markup)
+	bot.register_next_step_handler(call.message, get_button_text, chat_id, from_chat_id, message_id)
+
+def get_button_text(message, chat_id, from_chat_id, message_id):
+	button_link = message.text
+	Cancel_markup = types.InlineKeyboardMarkup()
+	Cancel_button = types.InlineKeyboardButton("لغو فرایند", callback_data= "cancel_inline_button", style= "danger")
+	Cancel_markup.add(Cancel_button)
+
+	bot.reply_to(message, "متن دکمه را ارسال کنید. برای ظاهر بهتر ، بیشتر از دو کلمه نباشد.", reply_markup= Cancel_markup)
+	bot.register_next_step_handler(message, create_button, button_link, chat_id, from_chat_id, message_id)
+
+def create_button(message, button_link, chat_id, from_chat_id, message_id):
+	button_text = message.text
+	user_id = message.from_user.id
+	glass_buttons[user_id].append(button_text)
+	glass_buttons[user_id].append(button_link)
+
+	success_markup = types.InlineKeyboardMarkup(row_width= 1)
+	send_button = types.InlineKeyboardButton("ارسال پیام به کانال/گروه", callback_data= "send_user_post", style= "success")
+	cancel_button = types.InlineKeyboardButton("لغو فرایند", callback_data= "cancel_inline_button", style= "danger")
+	success_markup.add(
+		send_button, 
+		cancel_button,
+		)
+
+	if len(glass_buttons[user_id]) == 3:
+		user_keyboard = types.InlineKeyboardMarkup(row_width=2)
+		button1 = types.InlineKeyboardButton(f"{glass_buttons[user_id][1]}", url= f"{glass_buttons[user_id][2]}")
+		add_button = types.InlineKeyboardButton("➕اضافه کردن دکمه", callback_data= "add_inline_button")
+		user_keyboard.add(
+			button1, add_button, 
+			)
+		bot.copy_message(chat_id, from_chat_id, message_id, reply_markup= user_keyboard)
+		bot.send_message(message.chat.id, "✅دکمه با موفقیت اضافه شد", reply_markup= success_markup)
+
+	elif len(glass_buttons[user_id]) == 5:
+		user_keyboard = types.InlineKeyboardMarkup(row_width=2)
+		button1 = types.InlineKeyboardButton(f"{glass_buttons[user_id][1]}", url= f"{glass_buttons[user_id][2]}")
+		button2 = types.InlineKeyboardButton(f"{glass_buttons[user_id][3]}", url= f"{glass_buttons[user_id][4]}")
+		add_button = types.InlineKeyboardButton("➕اضافه کردن دکمه", callback_data= "add_inline_button")
+		user_keyboard.add(
+			button1, button2,
+			add_button,
+			)
+		bot.copy_message(chat_id, from_chat_id, message_id, reply_markup= user_keyboard)
+		bot.send_message(message.chat.id, "✅دکمه با موفقیت اضافه شد", reply_markup= success_markup)
+
+	elif len(glass_buttons[user_id]) == 7:
+		user_keyboard = types.InlineKeyboardMarkup(row_width=2)
+		button1 = types.InlineKeyboardButton(f"{glass_buttons[user_id][1]}", url= f"{glass_buttons[user_id][2]}")
+		button2 = types.InlineKeyboardButton(f"{glass_buttons[user_id][3]}", url= f"{glass_buttons[user_id][4]}")
+		button3 = types.InlineKeyboardButton(f"{glass_buttons[user_id][5]}", url= f"{glass_buttons[user_id][6]}")
+		user_keyboard.add(
+			button1, button2,
+			button3,
+			)
+		bot.copy_message(chat_id, from_chat_id, message_id, reply_markup= user_keyboard)
+		bot.send_message(message.chat.id, "✅دکمه با موفقیت اضافه شد. امکان اضافه کردن بیشتر از 3 دکمه وجود ندارد", reply_markup= success_markup)
+
+@bot.callback_query_handler(func= lambda call: call.data == "send_user_post")
+def get_channelorgroup_id(call):
+	Cancel_markup = types.InlineKeyboardMarkup()
+	Cancel_button = types.InlineKeyboardButton("لغو فرایند", callback_data= "cancel_inline_button", style= "danger")
+	Cancel_markup.add(Cancel_button)
+	bot.answer_callback_query(call.id)
+	bot.send_message(call.message.chat.id, "آیدی کانال/گروه مورد نظر را ارسال کنید. ربات باید در آن عضو و دسترسی های لازم را داشته باشد", reply_markup= Cancel_markup)
+	bot.register_next_step_handler(call.message, check_bot_membership)
+
+def check_bot_membership(message):
+
+	Cancel_markup = types.InlineKeyboardMarkup()
+	Cancel_button = types.InlineKeyboardButton("لغو فرایند", callback_data= "cancel_inline_button", style= "danger")
+	Cancel_markup.add(Cancel_button)
+	
+	chat_id = message.text
+	bot_id = bot.get_me().id
+	try:
+		membership = bot.get_chat_member(chat_id, bot_id)
+		chat = bot.get_chat(chat_id)
+		check_bot_access(message, membership, chat, chat_id)	
+	except Exception:
+		bot.send_message(message.chat.id, "❌آیدی وجود ندارد و یا ربات عضو این کانال/گروه نیست ، ربات را اضافه کرده و دوباره آیدی را ارسال کنید", reply_markup= Cancel_markup)	
+		bot.register_next_step_handler(message, check_bot_membership)
+
+def check_bot_access(message, membership, chat, chat_id):
+	Cancel_markup = types.InlineKeyboardMarkup()
+	Cancel_button = types.InlineKeyboardButton("لغو فرایند", callback_data= "cancel_inline_button", style= "danger")
+	Cancel_markup.add(Cancel_button)
+
+	if membership.status in ["left", "kicked"]:
+		bot.send_message(message.chat.id, "❌ربات در کانال یا گروه ارسال شده عضو نیست ، ربات را اضافه کرده و دوباره آیدی کانال/گروه را ارسال کنید", reply_markup= Cancel_markup)
+		bot.register_next_step_handler(message, check_bot_membership)
+	elif chat.type == "channel":
+		if membership.status != "administrator":
+			bot.send_message(message.chat.id, "❌ربات در کانال ارسال شده ادمین نیست ، دسترسی لازم را بدید و آیدی را دوباره ارسال کنید", reply_markup= Cancel_markup)
+			bot.register_next_step_handler(message, check_bot_membership)
+		else:
+			send_post(message, chat_id)
+	elif chat.type in ["group", "supergroup"]:
+		send_post(message, chat_id)
+
+def send_post(message, chat_id):
+	user_id = message.from_user.id
+
+	send_post_keyboard = types.InlineKeyboardMarkup(row_width= 1)
+	send_another_chat = types.InlineKeyboardButton("ارسال به چت دیگر", callback_data= "send_ready_message_agian", style= "success")
+	finished_button = types.InlineKeyboardButton("تمام", callback_data= "cancel_inline_button", style= "danger")
+	send_post_keyboard.add(
+		send_another_chat,
+		finished_button,
+	)
+	if len(glass_buttons[user_id]) == 3:
+		user_keyboard = types.InlineKeyboardMarkup(row_width=2)
+		button1 = types.InlineKeyboardButton(f"{glass_buttons[user_id][1]}", url= f"{glass_buttons[user_id][2]}")
+		user_keyboard.add(
+			button1, 
+			)
+	
+
+	elif len(glass_buttons[user_id]) == 5:
+		user_keyboard = types.InlineKeyboardMarkup(row_width=2)
+		button1 = types.InlineKeyboardButton(f"{glass_buttons[user_id][1]}", url= f"{glass_buttons[user_id][2]}")
+		button2 = types.InlineKeyboardButton(f"{glass_buttons[user_id][3]}", url= f"{glass_buttons[user_id][4]}")
+		user_keyboard.add(
+			button1, button2,
+			)
+		
+
+	elif len(glass_buttons[user_id]) == 7:
+		user_keyboard = types.InlineKeyboardMarkup(row_width=2)
+		button1 = types.InlineKeyboardButton(f"{glass_buttons[user_id][1]}", url= f"{glass_buttons[user_id][2]}")
+		button2 = types.InlineKeyboardButton(f"{glass_buttons[user_id][3]}", url= f"{glass_buttons[user_id][4]}")
+		button3 = types.InlineKeyboardButton(f"{glass_buttons[user_id][5]}", url= f"{glass_buttons[user_id][6]}")
+		user_keyboard.add(
+			button1, button2,
+			button3,
+			)		
+
+	try:
+		bot.copy_message(chat_id, user_id, glass_buttons[user_id][0], reply_markup= user_keyboard)
+		bot.send_message(message.chat.id, "✅پیام با موفقیت ارسال شد", reply_markup= send_post_keyboard)
+	except:
+		bot.send_message(message.chat.id, "❌امکان ارسال به این چت وجود ندارد", reply_markup= send_post_keyboard)	
+
+@bot.callback_query_handler(func= lambda call: call.data == "cancel_inline_button")
+def cancel_sending_message(call):
+		bot.answer_callback_query(call.id)
+		glass_buttons.pop(call.from_user.id, None)
+		bot.clear_step_handler_by_chat_id(call.message.chat.id)
+		bot.send_message(call.message.chat.id, "ابزار مورد نظر را انتخاب کنید", reply_markup= keyboard)
+
+@bot.callback_query_handler(func= lambda call: call.data == "send_ready_message_agian")
+def send_ready_message_again(call):
+
+	Cancel_markup = types.InlineKeyboardMarkup()
+	Cancel_button = types.InlineKeyboardButton("لغو فرایند", callback_data= "cancel_inline_button", style= "danger")
+	Cancel_markup.add(Cancel_button)
+
+	bot.answer_callback_query(call.id)
+	bot.send_message(call.message.chat.id, "آیدی کانال/گروه مورد نظر را ارسال کنید. ربات باید در آن عضو و دسترسی های لازم را داشته باشد", reply_markup= Cancel_markup)
+	bot.register_next_step_handler(call.message, check_bot_membership)				
 
 # Group message handler zone
 # Here, we handle messages those have sent by group users
