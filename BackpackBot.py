@@ -874,10 +874,12 @@ def get_user_message_inline_button(message):
 	Cancel_markup = types.InlineKeyboardMarkup()
 	Cancel_button = types.InlineKeyboardButton("لغو", callback_data= "cancel_inline_button", style= "danger")
 	Cancel_markup.add(Cancel_button)
-
-	glass_buttons[user_id] = []
-	bot.reply_to(message, "پست خود را ارسال کنید", reply_markup= Cancel_markup)
-	bot.register_next_step_handler(message, preview)
+	if not check_membership(message.from_user.id):
+		send_membership_message(message.chat.id)
+	else:	
+		glass_buttons[user_id] = []
+		bot.reply_to(message, "پست خود را ارسال کنید", reply_markup= Cancel_markup)
+		bot.register_next_step_handler(message, preview)
 
 
 def preview(message):
@@ -1061,10 +1063,14 @@ def send_ready_message_again(call):
 	Cancel_markup = types.InlineKeyboardMarkup()
 	Cancel_button = types.InlineKeyboardButton("لغو فرایند", callback_data= "cancel_inline_button", style= "danger")
 	Cancel_markup.add(Cancel_button)
-
-	bot.answer_callback_query(call.id)
-	bot.send_message(call.message.chat.id, "آیدی کانال/گروه مورد نظر را ارسال کنید. ربات باید در آن عضو و دسترسی های لازم را داشته باشد", reply_markup= Cancel_markup)
-	bot.register_next_step_handler(call.message, check_bot_membership)				
+	if call.from_user.id in glass_buttons:
+		bot.answer_callback_query(call.id)
+		bot.send_message(call.message.chat.id, "آیدی کانال/گروه مورد نظر را ارسال کنید. ربات باید در آن عضو و دسترسی های لازم را داشته باشد", reply_markup= Cancel_markup)
+		bot.register_next_step_handler(call.message, check_bot_membership)
+	else:
+		bot.answer_callback_query(call.id)
+		bot.send_message(call.message.chat.id, "پیام شما حذف شده است. لطفا یک پیام جدید ارسال کنید", reply_markup= Cancel_markup)
+		bot.register_next_step_handler(call.message, preview)					
 
 # Group message handler zone
 # Here, we handle messages those have sent by group users
@@ -1078,7 +1084,7 @@ def group_currency_prices(message):
 # When users send irrelevant messages
 @bot.message_handler(func=lambda message: True and message.chat.type == "private")
 def echo_all(message):
-	bot.reply_to(message, start_message, reply_markup= keyboard)
+	bot.reply_to(message, "از منوی زیر ابزار مورد نظر را انتخاب کنید\nبرای راهنمایی /help را ارسال کنید", reply_markup= keyboard)
 
 # Running the bot
 bot.infinity_polling()
