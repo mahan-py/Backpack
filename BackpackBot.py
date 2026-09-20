@@ -1,15 +1,6 @@
 import telebot
 import asyncio
 from telebot import types
-from Backpack import takes_average
-from Backpack import bmi
-from Backpack import prices
-from Backpack import PasswordGeneratorAbstract, NumbericPasswordGenerator, LetterPasswordGenerator, MixedPasswordGenerator
-from Backpack import translator
-from Backpack import lottery
-from Backpack import shamsi_date_difference
-from Backpack import png_jpg, jpg_png, pdf_png, create_zip_file, image_pdf
-from Backpack import APIprices
 import Backpack
 
 # Some messages were too long so i created txt files and wrote them there
@@ -66,7 +57,6 @@ bmi_button = types.KeyboardButton("BMI")
 currency_button = types.KeyboardButton("قیمت ارز")
 password_button = types.KeyboardButton("تولید رمز")
 date_difference_button = types.KeyboardButton("اختلاف تاریخ")
-translate_button = types.KeyboardButton("ترجمه")
 lottery_button = types.KeyboardButton("قرعه کشی")
 format_converter_button = types.KeyboardButton("تبدیل فرمت")
 text_to_speech_button = types.KeyboardButton("متن به صوت")
@@ -75,10 +65,9 @@ inline_keyboard_maker_button = types.KeyboardButton("دکمه شیشه ای")
 keyboard.add(
 	average_button, bmi_button,
 	currency_button, password_button,
-	date_difference_button, translate_button,
-	lottery_button, format_converter_button,
-	text_to_speech_button, user_info_button,
-	inline_keyboard_maker_button,
+	date_difference_button, lottery_button, 
+	format_converter_button, text_to_speech_button, 
+	user_info_button, inline_keyboard_maker_button,
 )
 
 # Starting the bot for the first time or reaction to /start
@@ -93,7 +82,8 @@ def send_welcome(message):
 # Sends a general guide to help users
 @bot.message_handler(commands=['help'], func= lambda message: message.chat.type == "private")
 def send_help(message):
-	bot.reply_to(message, help_message)		
+	bot.reply_to(message, help_message)
+
 
 # Average button run
 @bot.message_handler(func= lambda message: message.text == "میانگین" and message.chat.type == "private")
@@ -110,7 +100,7 @@ def average_tool(message):
 def get_numbers(message):
 	try:
 		numbers = message.text
-		average = takes_average(numbers)
+		average = Backpack.takes_average(numbers)
 		bot.send_message(message.chat.id, average)
 	except:
 		bot.send_message(message.chat.id, "مشکلی پیش اومد")	
@@ -173,7 +163,7 @@ def get_height(message, weight):
 			bot.reply_to(message, "قد باید بین 1.20 متر و 2.50 متر باشد ، دوباره ارسال کنید", reply_markup= Cancel_markup)
 			bot.register_next_step_handler(message, get_height, weight)
 		else:
-			user_BMI = bmi(weight, height)
+			user_BMI = Backpack.bmi(weight, height)
 
 			bmi_information_sources = types.InlineKeyboardMarkup()
 			source = types.InlineKeyboardButton("اطلاعات بیشتر", url= "https://fa.wikipedia.org/wiki/%D8%B4%D8%A7%D8%AE%D8%B5_%D8%AA%D9%88%D8%AF%D9%87_%D8%A8%D8%AF%D9%86%DB%8C")
@@ -221,7 +211,7 @@ def find_price(message):
 	Cancel_markup.add(Cancel_button)
 
 	currency_name = message.text
-	price = APIprices(currency_name)
+	price = Backpack.APIprices(currency_name)
 	bot.reply_to(message, price, reply_markup= Cancel_markup)
 	bot.register_next_step_handler(message, find_price)
 
@@ -274,15 +264,15 @@ def charachter(message, password_type):
 def create_password(message, password_type, charachter_number):
 	length = int(charachter_number)
 	if password_type == "فقط شامل اعداد":
-		user_password = NumbericPasswordGenerator()
+		user_password = Backpack.NumbericPasswordGenerator()
 		result = user_password.generate_password(length= length)
 		bot.send_message(message.chat.id, result, reply_markup= keyboard)
 	elif password_type == "فقط شامل حروف":
-		user_password = LetterPasswordGenerator()
+		user_password = Backpack.LetterPasswordGenerator()
 		result = user_password.generate_password(length= length)
 		bot.send_message(message.chat.id, result, reply_markup= keyboard)
 	elif password_type == "ترکیبی":
-		user_password = MixedPasswordGenerator()
+		user_password = Backpack.MixedPasswordGenerator()
 		result = user_password.generate_password(length= length)
 		bot.send_message(message.chat.id, result, reply_markup= keyboard)		
 
@@ -443,7 +433,7 @@ def day_check(message, year, month):
 		bot.register_next_step_handler(message, day_check, year, month)		
 
 def calculate_date_difference(message, year, month, day):															
-	result = shamsi_date_difference(year, month, day)
+	result = Backpack.shamsi_date_difference(year, month, day)
 	bot.send_message(message.chat.id, result, reply_markup= keyboard)
 
 # CE date requirements related to next function
@@ -454,7 +444,7 @@ present_CE_year = now_CE.year
 present_CE_month = now_CE.month
 present_CE_day = now_CE.day
 
-# When users choose Persian date type
+# When users choose CE date type
 @bot.callback_query_handler(func= lambda call: call.data == "CE")
 def CE_date_get_year(call):
 	
@@ -580,7 +570,7 @@ def day_check_CE(message, year, month):
 		bot.register_next_step_handler(message, day_check_CE, year, month)		
 
 def calculate_date_difference_CE(message, year, month, day):															
-	result = date_difference_CE(year, month, day)
+	result = Backpack.date_difference_CE(year, month, day)
 	bot.send_message(message.chat.id, result, reply_markup= keyboard)
 
 # Related to persian date, when users want to send the year again
@@ -590,68 +580,6 @@ def restart_get_year(call):
 	bot.answer_callback_query(call.id)
 	get_year(call.message)
 		
-
-# Translater button run
-@bot.message_handler(func= lambda message: message.text == "ترجمه" and message.chat.type == "private")
-def start_translate_text(message):
-	target_language_keyboard = types.ReplyKeyboardMarkup(row_width=3, resize_keyboard= True)
-	language_button1 = types.KeyboardButton("فارسی")
-	language_button2 = types.KeyboardButton("انگلیسی")
-	language_button3 = types.KeyboardButton("چینی")
-	language_button4 = types.KeyboardButton("فرانسوی")
-	language_button5 = types.KeyboardButton("اسپانیایی")
-	language_button6 = types.KeyboardButton("آلمانی")
-	language_button7 = types.KeyboardButton("روسی")
-	language_button8 = types.KeyboardButton("ترکی")
-	language_button9 = types.KeyboardButton("عربی")
-	target_language_keyboard.add(
-		language_button1, language_button2, language_button3,
-		language_button4, language_button5, language_button6,
-		language_button7, language_button8, language_button9,
-	)
-	if not check_membership(message.from_user.id):
-		send_membership_message(message.chat.id)
-	else:	
-		bot.reply_to(message, "از منوی زیر ، زبان هدف را انخاب کنید", reply_markup= target_language_keyboard)
-		bot.register_next_step_handler(message, check_target_language)
-
-def check_target_language(message):
-
-	if message.text not in ["انگلیسی", "فارسی", "چینی", "فرانسوی", "اسپانیایی", "آلمانی", "روسی", "ترکی", "عربی", "لغو"]:
-		bot.reply_to(message, "زبان یافت نشد ، دوباره وارد کنید")
-		bot.register_next_step_handler(message, check_target_language)
-	elif message.text == "لغو":
-		bot.clear_step_handler_by_chat_id(message.chat.id)
-		bot.send_message(message.chat.id, "ابزار مورد نظر را انتخاب کنید", reply_markup= keyboard)	
-	else:
-		user_target_language = message.text
-		bot.send_message(message.chat.id, "متن خود را ارسال کنید")
-		bot.register_next_step_handler(message, translate_text, user_target_language)
-				
-def translate_text(message, user_target_language):
-
-	Cancel_markup = types.InlineKeyboardMarkup()
-	Cancel_button = types.InlineKeyboardButton("برگشت به منوی اصلی", callback_data= "cancel", style= "danger")
-	target_language_button = types.InlineKeyboardButton("تغییر زبان هدف", callback_data= "change_target_language", style= "primary")
-	Cancel_markup.add(
-		target_language_button,
-		Cancel_button,
-		)
-
-	user_text = message.text
-	result = translator(user_text, user_target_language)
-	bot.send_message(message.chat.id, result, reply_markup= Cancel_markup)
-	bot.register_next_step_handler(message, translate_text, user_target_language)
-
-
-# Related to translator tool, when users want to change the target language
-@bot.callback_query_handler(func= lambda call: call.data == "change_target_language")
-def change_target_language(call):
-	bot.clear_step_handler_by_chat_id(call.message.chat.id)
-	bot.answer_callback_query(call.id)
-	start_translate_text(call.message)
-
-
 
 # Lottery button run
 @bot.message_handler(func= lambda message: message.text == "قرعه کشی" and message.chat.type == "private")		
@@ -678,7 +606,7 @@ def do_lottery(message):
 
 	user_text = message.text
 	lottery_users[message.chat.id] = user_text
-	bot_choice = lottery(user_text)
+	bot_choice = Backpack.lottery(user_text)
 	bot.send_message(message.chat.id, f"انتخاب رندوم: {bot_choice}", reply_markup= Cancel_markup)
 
 # Related to lottery, when users want to do lottery again	
@@ -687,7 +615,7 @@ def do_lottery_again(call):
 	bot.answer_callback_query(call.id)
 	chat_id = call.message.chat.id
 	user_text = lottery_users.get(chat_id)
-	bot_choice = lottery(user_text)
+	bot_choice = Backpack.lottery(user_text)
 
 	Cancel_markup = types.InlineKeyboardMarkup()
 	Cancel_button = types.InlineKeyboardButton("لغو", callback_data= "cancel_lottery", style= "danger")
@@ -757,7 +685,7 @@ def start_converting(message, user_demand):
 	elif user_demand == "تبدیل PNG به JPG":		
 		file_info = bot.get_file(message.document.file_id)
 		user_image_bytes = bot.download_file(file_info.file_path)
-		final_image = png_jpg(user_image_bytes)
+		final_image = Backpack.png_jpg(user_image_bytes)
 		if final_image is not None:
 			bot.send_chat_action(message.chat.id, "upload_document")
 			bot.send_document(message.chat.id, final_image, reply_markup= keyboard)
@@ -766,7 +694,7 @@ def start_converting(message, user_demand):
 	elif user_demand == "تبدیل JPG به PNG":
 		file_info = bot.get_file(message.document.file_id)
 		user_image_bytes = bot.download_file(file_info.file_path)
-		final_image = jpg_png(user_image_bytes)
+		final_image = Backpack.jpg_png(user_image_bytes)
 		if final_image is not None:
 			bot.send_chat_action(message.chat.id, "upload_document")
 			bot.send_document(message.chat.id, final_image, reply_markup= keyboard)
@@ -775,9 +703,9 @@ def start_converting(message, user_demand):
 	elif user_demand == "تبدیل PDF به عکس":
 		file_info = bot.get_file(message.document.file_id)
 		user_pdf = bot.download_file(file_info.file_path)
-		images = pdf_png(user_pdf)
+		images = Backpack.pdf_png(user_pdf)
 		if images is not None:
-			compressed_images = create_zip_file(images)
+			compressed_images = Backpack.create_zip_file(images)
 			if compressed_images is not None:
 				bot.send_chat_action(message.chat.id, "upload_document")
 				bot.send_document(message.chat.id, compressed_images, reply_markup= keyboard)
@@ -788,7 +716,7 @@ def start_converting(message, user_demand):
 	elif user_demand == "تبدیل عکس به PDF":
 		file_info = bot.get_file(message.document.file_id)
 		user_zipped_file = bot.download_file(file_info.file_path)
-		pdf = image_pdf(user_zipped_file)
+		pdf = Backpack.image_pdf(user_zipped_file)
 		if pdf is not None:
 			bot.send_chat_action(message.chat.id, "upload_document")
 			bot.send_document(message.chat.id, pdf, reply_markup= keyboard)
@@ -1077,7 +1005,7 @@ def send_ready_message_again(call):
 @bot.message_handler(func= lambda message: message.chat.type in ["group", "supergroup"] and message.text in ["دلار", "طلا", "تتر", "یورو", "بیت کوین", "گرام", "اتریوم", "ریپل", "سولانا", "دوج کوین", "نات کوین", "داگز", "شیبا", "کاردانو"])
 def group_currency_prices(message):
 	currency_name = message.text
-	price = APIprices(currency_name)
+	price = Backpack.APIprices(currency_name)
 	bot.send_message(message.chat.id, price)
 
 

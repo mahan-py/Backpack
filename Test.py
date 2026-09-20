@@ -68,15 +68,6 @@ class test_date_difference_tool(unittest.TestCase):
         day = 12
         self.assertEqual(shamsi_date_difference(year, month, day), "اختلاف تاریخ: 1 سال و 3 ماه و 13 روز")
 
-class test_translator_tool(unittest.TestCase):
-    def test1(self):
-        user_text = "Hello world"
-        user_target_language = "فارسی"
-        self.assertEqual(translator(user_text, user_target_language), "سلام دنیا")
-    def test2(self):
-        user_text = "سلام"
-        user_target_language = "چینی"
-        self.assertEqual(translator(user_text, user_target_language), "你好")
 
 class test_lottery_tool(unittest.TestCase):
     def test1(self):
