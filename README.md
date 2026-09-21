@@ -13,6 +13,7 @@ A multifunctional Telegram bot built with Python and pyTelegramBotAPI, designed 
 - 🔁 Format converter — PDF to PNG, JPG to PNG, image to PDF etc.
 - ▶️ Text-to-speech — Convert text to mp3 file.
 - 💠 Inline keyboard button maker — Use to create a message with buttons and share it.
+- 🟡 Admin panel for bot management — Normal users do not have access to the panel
 - 🧰 Multi-Tool Menu — Access all available tools through an easy-to-use Telegram interface.
 
 🔐 Required Channel Membership

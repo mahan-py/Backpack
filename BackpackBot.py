@@ -1,7 +1,11 @@
 import telebot
 import asyncio
 from telebot import types
+from telebot.apihelper import ApiTelegramException
 import Backpack
+import sqlite3
+import time
+from datetime import date
 
 # Some messages were too long so i created txt files and wrote them there
 with open("Bot_help.txt", "r", encoding= "utf-8") as file2:
@@ -50,6 +54,221 @@ def restart_checking_membership(call):
 		bot.answer_callback_query(call.id, "هنوز عضو نیستید!", show_alert= True)			
 
 
+# Database section
+conn = sqlite3.connect("bot.db")
+cursor = conn.cursor()
+cursor.execute("""
+	CREATE TABLE IF NOT EXISTS users(
+	user_id INTEGER PRIMARY KEY, is_premium BOOLEAN NOT NULL DEFAULT 0
+	)
+""")
+
+cursor.execute("""
+	CREATE TABLE IF NOT EXISTS admins (
+	user_id INTEGER PRIMARY KEY
+	)
+""")
+conn.commit()
+conn.close()
+
+def get_database():
+	return sqlite3.connect("bot.db", timeout= 10)
+
+def is_admin(user_id):
+	conn = get_database()
+	cursor = conn.cursor()
+	cursor.execute("SELECT 1 FROM admins WHERE user_id = ?", (user_id,))
+	result = cursor.fetchone()
+	conn.close()
+	return result is not None
+
+
+# Admin panel
+bot_owners = ["IronAryan"]
+
+admin_keyboard = types.InlineKeyboardMarkup(row_width= 2)
+admins_button = types.InlineKeyboardButton("ادمین", callback_data= "admins")
+log_button = types.InlineKeyboardButton("لاگ ربات", callback_data= "show_log")
+users_button = types.InlineKeyboardButton("کاربران", callback_data= "users")
+send_broadcast_button = types.InlineKeyboardButton("پیام همگانی", callback_data= "Broadcast")
+premium_button = types.InlineKeyboardButton("پریمیوم", callback_data= "premium")
+admin_keyboard.add(
+	admins_button, log_button,
+	users_button, premium_button,
+	send_broadcast_button,
+)
+
+@bot.message_handler(commands= ['admin'], func= lambda message: message.chat.type == "private")
+def check_admin(message):
+	if is_admin(message.from_user.id) == False and message.from_user.username not in bot_owners:
+		bot.reply_to(message, "❌شما ادمین نیستید و به پنل دسترسی ندارید")
+	elif is_admin(message.from_user.id) == True or message.from_user.username in bot_owners:
+		bot.reply_to(message, "به پنل ادمین خوش اومدید. همه چیز را اینجا مدیریت کنید", reply_markup= admin_keyboard)	
+
+@bot.callback_query_handler(func= lambda call: call.data == "admins")
+def admin_management(call):
+	conn = get_database()
+	cursor = conn.cursor()
+	cursor.execute("SELECT user_id FROM admins")
+	admins = cursor.fetchall()
+	conn.close()
+
+	admin_management_keyboard = types.InlineKeyboardMarkup(row_width= 1)
+	add_admin = types.InlineKeyboardButton("اضافه کردن ادمین", callback_data= "add_adminstator", style= "primary")
+	delete_admin = types.InlineKeyboardButton("حذف کردن ادمین", callback_data= "delete_adminstator", style= "danger")
+	go_back_button = types.InlineKeyboardButton("برگشت به منو", callback_data= "admin_panel")
+	admin_management_keyboard.add(add_admin, delete_admin, go_back_button,)
+	if admins:
+		text = "⚜️لیست ادمین ها:\n\n"
+		for admin in admins:
+			text += f"🆔`{admin[0]}`\n"
+	else:
+		text = "❌هیچ ادمینی ثبت نشده"
+	
+	bot.answer_callback_query(call.id)	
+	bot.edit_message_text(text, call.message.chat.id, call.message.message_id, reply_markup= admin_management_keyboard, parse_mode= "Markdown")
+
+@bot.callback_query_handler(func= lambda call: call.data == "admin_panel")				
+def back_admin_panel(call):
+	bot.answer_callback_query(call.id)
+	bot.edit_message_text("از منوی زیر انتخاب کنید", call.message.chat.id, call.message.message_id,reply_markup= admin_keyboard)
+@bot.callback_query_handler(func= lambda call: call.data == "add_adminstator")
+def get_adminstator_id(call):
+	bot.answer_callback_query(call.id)
+	bot.send_message(call.message.chat.id, "آیدی عددی کاربر مورد نظر را ارسال کنید")
+	bot.register_next_step_handler(call.message, add_adminstator)
+def add_adminstator(message):
+	admin_management_keyboard = types.InlineKeyboardMarkup(row_width= 1)
+	add_admin = types.InlineKeyboardButton("اضافه کردن ادمین", callback_data= "add_adminstator", style= "primary")
+	delete_admin = types.InlineKeyboardButton("حذف کردن ادمین", callback_data= "delete_adminstator", style= "danger")
+	go_back_button = types.InlineKeyboardButton("برگشت به منو", callback_data= "admin_panel")
+	admin_management_keyboard.add(add_admin, delete_admin, go_back_button,)
+	
+	conn = get_database()
+	cursor = conn.cursor()
+	cursor.execute("""INSERT OR IGNORE INTO admins (user_id) VALUES (?)""", (message.text,))
+	conn.commit()
+	conn.close()
+	bot.send_message(message.chat.id, "عملیات با موفقیت انجام شد✅", reply_markup= admin_management_keyboard)
+@bot.callback_query_handler(func= lambda call: call.data == "delete_adminstator")
+def get_adminstator_id_delete(call):
+	bot.answer_callback_query(call.id)
+	bot.send_message(call.message.chat.id, "آیدی عددی کاربر مورد نظر را ارسال کنید")
+	bot.register_next_step_handler(call.message, delete_adminstator)
+def delete_adminstator(message):
+	admin_management_keyboard = types.InlineKeyboardMarkup(row_width= 1)
+	add_admin = types.InlineKeyboardButton("اضافه کردن ادمین", callback_data= "add_adminstator", style= "primary")
+	delete_admin = types.InlineKeyboardButton("حذف کردن ادمین", callback_data= "delete_adminstator", style= "danger")
+	go_back_button = types.InlineKeyboardButton("برگشت به منو", callback_data= "admin_panel")
+	admin_management_keyboard.add(add_admin, delete_admin, go_back_button,)
+
+	conn = get_database()
+	cursor = conn.cursor()
+	cursor.execute("DELETE FROM admins WHERE user_id = ?", (message.text,))
+	conn.commit()
+	conn.close()
+	bot.send_message(message.chat.id, "عملیات با موفقیت انجام شد✅", reply_markup= admin_management_keyboard)
+
+@bot.callback_query_handler(func= lambda call: call.data == "show_log")
+def send_log(call):
+	try:
+		with open("bot.log", "rb") as log_file:
+			bot.send_chat_action(call.message.chat.id, "upload_document")
+			bot.send_document(call.message.chat.id, log_file)
+			bot.answer_callback_query(call.id)
+	except Exception:
+		bot.answer_callback_query(call.id)
+		bot.send_message(call.message.chat.id, "❌خطا در ارسال فایل لاگ")		
+
+@bot.callback_query_handler(func= lambda call: call.data == "users")
+def send_users_info(call):
+	admin_management_keyboard = types.InlineKeyboardMarkup(row_width= 1)
+	go_back_button = types.InlineKeyboardButton("برگشت به منو", callback_data= "admin_panel", style= "danger")
+	admin_management_keyboard.add(go_back_button)
+
+	conn = get_database()
+	cursor = conn.cursor()
+	cursor.execute("SELECT COUNT(*) FROM users")
+	total_users = cursor.fetchone()[0]
+	cursor.execute("SELECT COUNT(*) FROM users WHERE is_premium != 0")
+	premium_users = cursor.fetchone()[0]
+	conn.close()
+	text = f"🟦آمار کل کاربران\n\nتعداد کل: {total_users}\nکاربران پریمیوم: {premium_users}"
+	bot.edit_message_text(text, call.message.chat.id, call.message.message_id, reply_markup= admin_management_keyboard)
+	bot.answer_callback_query(call.id)
+
+@bot.callback_query_handler(func= lambda call: call.data == "Broadcast")
+def get_admin_message(call):
+	admin_management_keyboard = types.InlineKeyboardMarkup(row_width= 1)
+	go_back_button = types.InlineKeyboardButton("لغو", callback_data= "cancel_broadcast", style= "danger")
+	admin_management_keyboard.add(go_back_button)
+
+	bot.answer_callback_query(call.id)
+	bot.send_message(call.message.chat.id, "پیامی که میخواید به تمام کاربرای بات بفرستید ارسال کنید", reply_markup= admin_management_keyboard)
+	bot.register_next_step_handler(call.message, send_broadcast)
+def send_broadcast(message):
+	conn = get_database()
+	cursor = conn.cursor()
+	cursor.execute("SELECT user_id FROM users")
+	all_users = cursor.fetchall()
+	conn.close()	
+	success = 0
+	failed = 0
+	for (user_id,) in all_users:
+		while True:	
+			try:
+				bot.copy_message(user_id, message.chat.id, message.message_id)
+				success += 1
+				break
+			except ApiTelegramException as e:
+				if e.error_code == 429:
+					retry_after = e.result_json["parameters"]["retry_after"]
+					time.sleep(retry_after)
+					continue
+				else:
+					failed += 1
+					break
+	bot.send_message(message.chat.id, f"عملیات با موفقیت انجام شد\nتعداد کل کاربران: {len(all_users)}\nتعداد پیام های ارسال شده: {success}\nپیام های ارسال نشده: {failed}")			
+@bot.callback_query_handler(func= lambda call: call.data == "cancel_broadcast")
+def cancel_broadcast(call):
+	bot.clear_step_handler_by_chat_id(call.message.chat.id)
+	bot.answer_callback_query(call.id)
+	bot.delete_message(call.message.chat.id, call.message.message_id)
+
+@bot.callback_query_handler(func= lambda call: call.data == "premium")
+def get_premium_user_id(call):
+	admin_management_keyboard = types.InlineKeyboardMarkup(row_width= 1)
+	go_back_button = types.InlineKeyboardButton("لغو", callback_data= "cancel_broadcast", style= "danger")
+	admin_management_keyboard.add(go_back_button)
+
+	bot.answer_callback_query(call.id)
+	bot.send_message(call.message.chat.id, "آیدی کاربری که میخواید پریمیوم بشه رو ارسال کنید", reply_markup= admin_management_keyboard)
+	bot.register_next_step_handler(call.message, set_premium_user)
+def set_premium_user(message):
+	admin_management_keyboard = types.InlineKeyboardMarkup(row_width= 1)
+	go_back_button = types.InlineKeyboardButton("برگشت به منو", callback_data= "admin_panel", style= "danger")
+	admin_management_keyboard.add(go_back_button)
+
+	today = date.today()
+	try:
+		premium_until = today.replace(year=today.year + 1)
+	except ValueError:
+		premium_until = today.replace(year=today.year + 1, day=28)
+	
+	premium_until = premium_until.isoformat()
+	
+	conn = get_database()
+	cursor = conn.cursor()
+	cursor.execute("""UPDATE users SET is_premium = ? WHERE user_id = ?""", (premium_until, message.text))
+	conn.commit()
+	updated = cursor.rowcount
+	conn.close()
+	if updated == 0:
+		bot.send_message(message.chat.id, "کاربری با این آیدی پیدا نشد❌", reply_markup= admin_management_keyboard)
+	else:
+		bot.send_message(message.chat.id, f"اشتراک پریمیوم با موفقیت فعال شد✅\n\nآیدی کاربر: `{message.text}`\nنوع اشتراک: یک ساله\nتاریخ انقضا: {premium_until}", parse_mode= "Markdown", reply_markup= admin_management_keyboard)			
+
+
 # Main keyboard buttons
 keyboard = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
 average_button = types.KeyboardButton("میانگین")
@@ -76,6 +295,11 @@ def send_welcome(message):
 	if not check_membership(message.from_user.id):
 		send_membership_message(message.chat.id)
 	else:
+		conn = get_database()
+		cursor = conn.cursor()
+		cursor.execute("INSERT OR IGNORE INTO users(user_id) VALUES (?)", (message.from_user.id,))
+		conn.commit()
+		conn.close()
 		user_first_name = message.from_user.first_name	
 		bot.send_message(message.chat.id, f"⚜️سلام {user_first_name} عزیز! ابزاری که نیاز داری رو از منوی زیر انتخاب کن\nبرای راهنمایی /help رو ارسال کن", reply_markup= keyboard)
 
