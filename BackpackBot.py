@@ -49,7 +49,15 @@ def restart_checking_membership(call):
 	if check_membership(call.from_user.id):
 		bot.answer_callback_query(call.id, "عضویت تایید شد")
 		bot.delete_message(call.message.chat.id, call.message.message_id)
-		send_welcome(call.message)
+		try:
+			conn = get_database()
+			cursor = conn.cursor()
+			cursor.execute("INSERT OR IGNORE INTO users(user_id) VALUES (?)", (message.from_user.id,))
+			conn.commit()
+			conn.close()
+			send_welcome(call.message)
+		except:
+			pass	
 	else:
 		bot.answer_callback_query(call.id, "هنوز عضو نیستید!", show_alert= True)			
 
@@ -87,11 +95,11 @@ def is_admin(user_id):
 bot_owners = ["IronAryan"]
 
 admin_keyboard = types.InlineKeyboardMarkup(row_width= 2)
-admins_button = types.InlineKeyboardButton("ادمین", callback_data= "admins")
-log_button = types.InlineKeyboardButton("لاگ ربات", callback_data= "show_log")
-users_button = types.InlineKeyboardButton("کاربران", callback_data= "users")
-send_broadcast_button = types.InlineKeyboardButton("پیام همگانی", callback_data= "Broadcast")
-premium_button = types.InlineKeyboardButton("پریمیوم", callback_data= "premium")
+admins_button = types.InlineKeyboardButton("ادمین💎", callback_data= "admins")
+log_button = types.InlineKeyboardButton("لاگ ربات⚠️", callback_data= "show_log")
+users_button = types.InlineKeyboardButton("کاربران👤", callback_data= "users")
+send_broadcast_button = types.InlineKeyboardButton("پیام همگانی✉️", callback_data= "Broadcast")
+premium_button = types.InlineKeyboardButton("پریمیوم💸", callback_data= "premium")
 admin_keyboard.add(
 	admins_button, log_button,
 	users_button, premium_button,
@@ -271,16 +279,16 @@ def set_premium_user(message):
 
 # Main keyboard buttons
 keyboard = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-average_button = types.KeyboardButton("میانگین")
-bmi_button = types.KeyboardButton("BMI")
-currency_button = types.KeyboardButton("قیمت ارز")
-password_button = types.KeyboardButton("تولید رمز")
-date_difference_button = types.KeyboardButton("اختلاف تاریخ")
-lottery_button = types.KeyboardButton("قرعه کشی")
-format_converter_button = types.KeyboardButton("تبدیل فرمت")
-text_to_speech_button = types.KeyboardButton("متن به صوت")
-user_info_button = types.KeyboardButton("تلگرام من")
-inline_keyboard_maker_button = types.KeyboardButton("دکمه شیشه ای")
+average_button = types.KeyboardButton("میانگین🧮")
+bmi_button = types.KeyboardButton("BMI🏋🏻‍♂️")
+currency_button = types.KeyboardButton("قیمت ارز💰")
+password_button = types.KeyboardButton("تولید رمز🔑")
+date_difference_button = types.KeyboardButton("اختلاف تاریخ📅")
+lottery_button = types.KeyboardButton("قرعه کشی⚜️")
+format_converter_button = types.KeyboardButton("تبدیل فرمت📁")
+text_to_speech_button = types.KeyboardButton("متن به صوت🎙")
+user_info_button = types.KeyboardButton("تلگرام من👤")
+inline_keyboard_maker_button = types.KeyboardButton("دکمه شیشه ای🍷")
 keyboard.add(
 	average_button, bmi_button,
 	currency_button, password_button,
@@ -295,11 +303,6 @@ def send_welcome(message):
 	if not check_membership(message.from_user.id):
 		send_membership_message(message.chat.id)
 	else:
-		conn = get_database()
-		cursor = conn.cursor()
-		cursor.execute("INSERT OR IGNORE INTO users(user_id) VALUES (?)", (message.from_user.id,))
-		conn.commit()
-		conn.close()
 		user_first_name = message.from_user.first_name	
 		bot.send_message(message.chat.id, f"⚜️سلام {user_first_name} عزیز! ابزاری که نیاز داری رو از منوی زیر انتخاب کن\nبرای راهنمایی /help رو ارسال کن", reply_markup= keyboard)
 
@@ -310,7 +313,7 @@ def send_help(message):
 
 
 # Average button run
-@bot.message_handler(func= lambda message: message.text == "میانگین" and message.chat.type == "private")
+@bot.message_handler(func= lambda message: message.text == "میانگین🧮" and message.chat.type == "private")
 def average_tool(message):
 	Cancel_markup = types.InlineKeyboardMarkup()
 	Cancel_button = types.InlineKeyboardButton("لغو", callback_data= "cancel", style= "danger")
@@ -330,7 +333,7 @@ def get_numbers(message):
 		bot.send_message(message.chat.id, "مشکلی پیش اومد")	
 
 # BMI button run
-@bot.message_handler(func= lambda message: message.text == "BMI" and message.chat.type == "private")
+@bot.message_handler(func= lambda message: message.text == "BMI🏋🏻‍♂️" and message.chat.type == "private")
 def bmi_tool(message):
 	Cancel_markup = types.InlineKeyboardMarkup()
 	Cancel_button = types.InlineKeyboardButton("لغو", callback_data= "cancel", style= "danger")
@@ -399,7 +402,7 @@ def get_height(message, weight):
 		bot.register_next_step_handler(message, get_height, weight)
 
 # Prices button run
-@bot.message_handler(func= lambda message: message.text == "قیمت ارز" and message.chat.type == "private")
+@bot.message_handler(func= lambda message: message.text == "قیمت ارز💰" and message.chat.type == "private")
 def choose_currency(message):
 	currency_keyboard = types.ReplyKeyboardMarkup(row_width=3, resize_keyboard=True)
 	dollar_burron = types.KeyboardButton("دلار")
@@ -440,7 +443,7 @@ def find_price(message):
 	bot.register_next_step_handler(message, find_price)
 
 # Password generator
-@bot.message_handler(func= lambda message: message.text == "تولید رمز" and message.chat.type == "private")
+@bot.message_handler(func= lambda message: message.text == "تولید رمز🔑" and message.chat.type == "private")
 def get_password_type(message):
 	password_generator_keyboard = types.ReplyKeyboardMarkup(row_width= 1, resize_keyboard= True)
 	number_button = types.KeyboardButton("فقط شامل اعداد")
@@ -508,7 +511,7 @@ def restart_get_password_type(call):
 	get_password_type(call.message)
 
 # Date difference button run
-@bot.message_handler(func= lambda message: message.text == "اختلاف تاریخ" and message.chat.type == "private")
+@bot.message_handler(func= lambda message: message.text == "اختلاف تاریخ📅" and message.chat.type == "private")
 def get_date_type(message):
 	
 	Cancel_markup = types.InlineKeyboardMarkup(row_width= 2)
@@ -806,7 +809,7 @@ def restart_get_year(call):
 		
 
 # Lottery button run
-@bot.message_handler(func= lambda message: message.text == "قرعه کشی" and message.chat.type == "private")		
+@bot.message_handler(func= lambda message: message.text == "قرعه کشی⚜️" and message.chat.type == "private")		
 def get_lottery_input(message):
 
 	Cancel_markup = types.InlineKeyboardMarkup()
@@ -858,7 +861,7 @@ def cancel_lottery(call):
 
 
 # Format converter button run
-@bot.message_handler(func= lambda message: message.text == "تبدیل فرمت" and message.chat.type == "private")
+@bot.message_handler(func= lambda message: message.text == "تبدیل فرمت📁" and message.chat.type == "private")
 def get_convert_type(message):
 	format_converter_keyboard = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard= True)
 	png_jpg_button = types.KeyboardButton("تبدیل PNG به JPG")
@@ -948,7 +951,7 @@ def start_converting(message, user_demand):
 			bot.send_message(message.chat.id, "خطا در ساخت PDF", reply_markup= keyboard)				
 
 # Text to speech button run
-@bot.message_handler(func= lambda message: message.text == "متن به صوت" and message.chat.type == "private")
+@bot.message_handler(func= lambda message: message.text == "متن به صوت🎙" and message.chat.type == "private")
 def get_speech_gender(message):
 	speech_gender_markup = types.InlineKeyboardMarkup(row_width= 2)
 	man_button = types.InlineKeyboardButton("مرد", callback_data= "man_speech", style= "primary")
@@ -1006,7 +1009,7 @@ def tts(message):
 		users_speech_data.pop(f"{message.from_user.id}", None)
 
 # User info button run
-@bot.message_handler(func= lambda message: message.text == "تلگرام من")
+@bot.message_handler(func= lambda message: message.text == "تلگرام من👤" and message.chat.type == "private")
 def send_user_info(message):
 	user_first_name = message.from_user.first_name
 	user_number_id = message.from_user.id
@@ -1019,7 +1022,7 @@ def send_user_info(message):
 
 # Inline keyboard button maker run
 glass_buttons = {}
-@bot.message_handler(func= lambda message: message.text == "دکمه شیشه ای" and message.chat.type == "private")
+@bot.message_handler(func= lambda message: message.text == "دکمه شیشه ای🍷" and message.chat.type == "private")
 def get_user_message_inline_button(message):
 	user_id = message.from_user.id
 
@@ -1057,6 +1060,7 @@ def get_button_link(call):
 	Cancel_markup.add(Cancel_button)
 
 	bot.answer_callback_query(call.id)
+	bot.delete_message(call.message.chat.id, call.message.message_id)
 	bot.send_message(call.message.chat.id, "لینک خود را ارسال کنید", reply_markup= Cancel_markup)
 	bot.register_next_step_handler(call.message, get_button_text, chat_id, from_chat_id, message_id)
 
@@ -1123,8 +1127,13 @@ def get_channelorgroup_id(call):
 	Cancel_button = types.InlineKeyboardButton("لغو فرایند", callback_data= "cancel_inline_button", style= "danger")
 	Cancel_markup.add(Cancel_button)
 	bot.answer_callback_query(call.id)
-	bot.send_message(call.message.chat.id, "آیدی کانال/گروه مورد نظر را ارسال کنید. ربات باید در آن عضو و دسترسی های لازم را داشته باشد", reply_markup= Cancel_markup)
-	bot.register_next_step_handler(call.message, check_bot_membership)
+	if call.from_user.id in glass_buttons:
+		bot.send_message(call.message.chat.id, "آیدی کانال/گروه مورد نظر را ارسال کنید. ربات باید در آن عضو و دسترسی های لازم را داشته باشد", reply_markup= Cancel_markup)
+		bot.register_next_step_handler(call.message, check_bot_membership)
+	else:
+		bot.answer_callback_query(call.id)
+		bot.send_message(call.message.chat.id, "پیام شما حذف شده است. لطفا یک پیام جدید ارسال کنید", reply_markup= Cancel_markup)
+		bot.register_next_step_handler(call.message, preview)	
 
 def check_bot_membership(message):
 
