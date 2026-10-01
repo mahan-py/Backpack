@@ -1032,7 +1032,7 @@ def get_user_message_inline_button(message):
 	if not check_membership(message.from_user.id):
 		send_membership_message(message.chat.id)
 	else:	
-		glass_buttons[user_id] = []
+		glass_buttons[user_id] = {"message_id": None, "buttons": []}
 		bot.reply_to(message, "پست خود را ارسال کنید", reply_markup= Cancel_markup)
 		bot.register_next_step_handler(message, preview)
 
@@ -1040,7 +1040,11 @@ def get_user_message_inline_button(message):
 def preview(message):
 	user_message_id = message.message_id
 	user_id = message.from_user.id
-	glass_buttons[user_id].append(user_message_id)
+	if user_id in glass_buttons:
+		glass_buttons[user_id]["message_id"] = user_message_id
+	else:
+		glass_buttons[user_id] = {"message_id": None, "buttons": []}
+		glass_buttons[user_id]["message_id"] = user_message_id
 			
 	add_button_markup = types.InlineKeyboardMarkup(row_width= 2)
 	add_button = types.InlineKeyboardButton("➕اضافه کردن دکمه", callback_data= "add_inline_button")
@@ -1053,7 +1057,7 @@ def get_button_link(call):
 	user_id = call.from_user.id
 	chat_id = call.message.chat.id
 	from_chat_id = call.message.chat.id
-	message_id = glass_buttons[user_id][0]
+	message_id = glass_buttons[user_id]["message_id"]
 
 	Cancel_markup = types.InlineKeyboardMarkup()
 	Cancel_button = types.InlineKeyboardButton("لغو فرایند", callback_data= "cancel_inline_button", style= "danger")
@@ -1076,8 +1080,7 @@ def get_button_text(message, chat_id, from_chat_id, message_id):
 def create_button(message, button_link, chat_id, from_chat_id, message_id):
 	button_text = message.text
 	user_id = message.from_user.id
-	glass_buttons[user_id].append(button_text)
-	glass_buttons[user_id].append(button_link)
+	glass_buttons[user_id]["buttons"].append((button_text, button_link))
 
 	success_markup = types.InlineKeyboardMarkup(row_width= 1)
 	send_button = types.InlineKeyboardButton("ارسال پیام به کانال/گروه", callback_data= "send_user_post", style= "success")
@@ -1087,47 +1090,30 @@ def create_button(message, button_link, chat_id, from_chat_id, message_id):
 		cancel_button,
 		)
 
-	if len(glass_buttons[user_id]) == 3:
-		user_keyboard = types.InlineKeyboardMarkup(row_width=2)
-		button1 = types.InlineKeyboardButton(f"{glass_buttons[user_id][1]}", url= f"{glass_buttons[user_id][2]}")
-		add_button = types.InlineKeyboardButton("➕اضافه کردن دکمه", callback_data= "add_inline_button")
-		user_keyboard.add(
-			button1, add_button, 
-			)
-		bot.copy_message(chat_id, from_chat_id, message_id, reply_markup= user_keyboard)
+	prepared_keyboard = create_user_keyboard(user_id)
+	if len(glass_buttons[user_id]["buttons"]) < 3:
+		prepared_keyboard.add(types.InlineKeyboardButton("➕اضافه کردن دکمه", callback_data= "add_inline_button"))
+		bot.copy_message(chat_id, from_chat_id, message_id, reply_markup= prepared_keyboard)
 		bot.send_message(message.chat.id, "✅دکمه با موفقیت اضافه شد", reply_markup= success_markup)
+	elif len(glass_buttons[user_id]["buttons"]) == 3:
+		bot.copy_message(chat_id, from_chat_id, message_id, reply_markup= prepared_keyboard)
+		bot.send_message(message.chat.id, "✅دکمه با موفقیت اضافه شد. امکان اضافه کردن بیشتر از سه دکمه برای کاربران معمولی وجود ندارد", reply_markup= success_markup)
 
-	elif len(glass_buttons[user_id]) == 5:
-		user_keyboard = types.InlineKeyboardMarkup(row_width=2)
-		button1 = types.InlineKeyboardButton(f"{glass_buttons[user_id][1]}", url= f"{glass_buttons[user_id][2]}")
-		button2 = types.InlineKeyboardButton(f"{glass_buttons[user_id][3]}", url= f"{glass_buttons[user_id][4]}")
-		add_button = types.InlineKeyboardButton("➕اضافه کردن دکمه", callback_data= "add_inline_button")
-		user_keyboard.add(
-			button1, button2,
-			add_button,
-			)
-		bot.copy_message(chat_id, from_chat_id, message_id, reply_markup= user_keyboard)
-		bot.send_message(message.chat.id, "✅دکمه با موفقیت اضافه شد", reply_markup= success_markup)
-
-	elif len(glass_buttons[user_id]) == 7:
-		user_keyboard = types.InlineKeyboardMarkup(row_width=2)
-		button1 = types.InlineKeyboardButton(f"{glass_buttons[user_id][1]}", url= f"{glass_buttons[user_id][2]}")
-		button2 = types.InlineKeyboardButton(f"{glass_buttons[user_id][3]}", url= f"{glass_buttons[user_id][4]}")
-		button3 = types.InlineKeyboardButton(f"{glass_buttons[user_id][5]}", url= f"{glass_buttons[user_id][6]}")
-		user_keyboard.add(
-			button1, button2,
-			button3,
-			)
-		bot.copy_message(chat_id, from_chat_id, message_id, reply_markup= user_keyboard)
-		bot.send_message(message.chat.id, "✅دکمه با موفقیت اضافه شد. امکان اضافه کردن بیشتر از 3 دکمه وجود ندارد", reply_markup= success_markup)
+def create_user_keyboard(user_id):
+	user_keyboard = types.InlineKeyboardMarkup(row_width= 2)
+	buttons = []
+	for button_text, button_link in glass_buttons[user_id]["buttons"]:
+		buttons.append(types.InlineKeyboardButton(text= button_text, url= button_link))
+	user_keyboard.add(*buttons)	
+	return user_keyboard
 
 @bot.callback_query_handler(func= lambda call: call.data == "send_user_post")
 def get_channelorgroup_id(call):
 	Cancel_markup = types.InlineKeyboardMarkup()
 	Cancel_button = types.InlineKeyboardButton("لغو فرایند", callback_data= "cancel_inline_button", style= "danger")
 	Cancel_markup.add(Cancel_button)
-	bot.answer_callback_query(call.id)
 	if call.from_user.id in glass_buttons:
+		bot.answer_callback_query(call.id)
 		bot.send_message(call.message.chat.id, "آیدی کانال/گروه مورد نظر را ارسال کنید. ربات باید در آن عضو و دسترسی های لازم را داشته باشد", reply_markup= Cancel_markup)
 		bot.register_next_step_handler(call.message, check_bot_membership)
 	else:
@@ -1178,35 +1164,10 @@ def send_post(message, chat_id):
 		send_another_chat,
 		finished_button,
 	)
-	if len(glass_buttons[user_id]) == 3:
-		user_keyboard = types.InlineKeyboardMarkup(row_width=2)
-		button1 = types.InlineKeyboardButton(f"{glass_buttons[user_id][1]}", url= f"{glass_buttons[user_id][2]}")
-		user_keyboard.add(
-			button1, 
-			)
-	
 
-	elif len(glass_buttons[user_id]) == 5:
-		user_keyboard = types.InlineKeyboardMarkup(row_width=2)
-		button1 = types.InlineKeyboardButton(f"{glass_buttons[user_id][1]}", url= f"{glass_buttons[user_id][2]}")
-		button2 = types.InlineKeyboardButton(f"{glass_buttons[user_id][3]}", url= f"{glass_buttons[user_id][4]}")
-		user_keyboard.add(
-			button1, button2,
-			)
-		
-
-	elif len(glass_buttons[user_id]) == 7:
-		user_keyboard = types.InlineKeyboardMarkup(row_width=2)
-		button1 = types.InlineKeyboardButton(f"{glass_buttons[user_id][1]}", url= f"{glass_buttons[user_id][2]}")
-		button2 = types.InlineKeyboardButton(f"{glass_buttons[user_id][3]}", url= f"{glass_buttons[user_id][4]}")
-		button3 = types.InlineKeyboardButton(f"{glass_buttons[user_id][5]}", url= f"{glass_buttons[user_id][6]}")
-		user_keyboard.add(
-			button1, button2,
-			button3,
-			)		
-
+	prepared_keyboard = create_user_keyboard(user_id)
 	try:
-		bot.copy_message(chat_id, user_id, glass_buttons[user_id][0], reply_markup= user_keyboard)
+		bot.copy_message(chat_id, user_id, glass_buttons[user_id]["message_id"], reply_markup= prepared_keyboard)
 		bot.send_message(message.chat.id, "✅پیام با موفقیت ارسال شد", reply_markup= send_post_keyboard)
 	except:
 		bot.send_message(message.chat.id, "❌امکان ارسال به این چت وجود ندارد", reply_markup= send_post_keyboard)	
