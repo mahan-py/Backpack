@@ -6,6 +6,7 @@ import Backpack
 import sqlite3
 import time
 from datetime import date
+from pathlib import Path
 
 # Some messages were too long so i created txt files and wrote them there
 with open("Bot_help.txt", "r", encoding= "utf-8") as file2:
@@ -48,22 +49,17 @@ def send_membership_message(chat_id):
 def restart_checking_membership(call):
 	if check_membership(call.from_user.id):
 		bot.answer_callback_query(call.id, "عضویت تایید شد")
-		bot.delete_message(call.message.chat.id, call.message.message_id)
-		try:
-			conn = get_database()
-			cursor = conn.cursor()
-			cursor.execute("INSERT OR IGNORE INTO users(user_id) VALUES (?)", (message.from_user.id,))
-			conn.commit()
-			conn.close()
-			send_welcome(call.message)
-		except:
-			pass	
+		bot.delete_message(call.message.chat.id, call.message.message_id)	
 	else:
 		bot.answer_callback_query(call.id, "هنوز عضو نیستید!", show_alert= True)			
 
 
 # Database section
-conn = sqlite3.connect("bot.db")
+# Base dir of database
+BASE_DIR = Path(__file__).resolve().parent
+DB_PATH = BASE_DIR / "bot.db"
+
+conn = sqlite3.connect(DB_PATH, timeout=10)
 cursor = conn.cursor()
 cursor.execute("""
 	CREATE TABLE IF NOT EXISTS users(
@@ -80,7 +76,7 @@ conn.commit()
 conn.close()
 
 def get_database():
-	return sqlite3.connect("bot.db", timeout= 10)
+	return sqlite3.connect(DB_PATH, timeout= 10)
 
 def is_admin(user_id):
 	conn = get_database()
@@ -300,6 +296,13 @@ keyboard.add(
 # Starting the bot for the first time or reaction to /start
 @bot.message_handler(commands=['start'], func= lambda message: message.chat.type == "private")
 def send_welcome(message):
+
+	conn = get_database()
+	cursor = conn.cursor()
+	cursor.execute("INSERT OR IGNORE INTO users(user_id) VALUES (?)", (message.from_user.id,))
+	conn.commit()
+	conn.close()
+
 	if not check_membership(message.from_user.id):
 		send_membership_message(message.chat.id)
 	else:
@@ -427,8 +430,8 @@ def choose_currency(message):
 	if not check_membership(message.from_user.id):
 		send_membership_message(message.chat.id)
 	else:	
-		bot.reply_to(message, "ارز مورد نظر را وارد کنید", reply_markup= currency_keyboard)
-		bot.send_message(message.chat.id, "اگر ارز مورد نظر در لیست نیست ، کافیه اسم کامل آن را وارد کنید", reply_markup= Cancel_markup)
+		bot.reply_to(message, "ارز مورد نظر را از منوی زیر انتخاب کنید", reply_markup= currency_keyboard)
+		bot.send_message(message.chat.id, "اگر ارز مورد نظر در منو نیست ، اسم کامل آن را به فارسی ارسال کنید", reply_markup= Cancel_markup)
 		bot.register_next_step_handler(message, find_price)
 
 def find_price(message):
@@ -1194,9 +1197,13 @@ def send_ready_message_again(call):
 		bot.send_message(call.message.chat.id, "پیام شما حذف شده است. لطفا یک پیام جدید ارسال کنید", reply_markup= Cancel_markup)
 		bot.register_next_step_handler(call.message, preview)					
 
+@bot.message_handler(func= lambda message: message.text == "پریمیوم" and message.chat.type == "private")
+def buy_premium(message):
+	pass
+
 # Group message handler zone
 # Here, we handle messages those have sent by group users
-@bot.message_handler(func= lambda message: message.chat.type in ["group", "supergroup"] and message.text in ["دلار", "طلا", "تتر", "یورو", "بیت کوین", "گرام", "اتریوم", "ریپل", "سولانا", "دوج کوین", "نات کوین", "داگز", "شیبا", "کاردانو"])
+@bot.message_handler(func= lambda message: message.chat.type in ["group", "supergroup"] and message.text in Backpack.currencies or message.text in ["تتر", "دلار", "یورو", "طلا"])
 def group_currency_prices(message):
 	currency_name = message.text
 	price = Backpack.APIprices(currency_name)

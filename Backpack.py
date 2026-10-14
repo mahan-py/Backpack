@@ -18,6 +18,7 @@ import zipfile
 from natsort import natsorted
 import edge_tts
 import asyncio
+from decimal import Decimal
 
 # Average tool
  
@@ -49,135 +50,6 @@ def bmi(weight, height):
     elif 40 <= bmi:
         return (f"BMI = {bmi:.3f}\nچاقی درجه سه\n{bmi_message}")
 
-# Currency price tool
-
-def prices(currency_name):
-
-    if currency_name == "دلار":
-        try:
-            site = requests.get("https://www.tgju.org/profile/price_dollar_rl")
-            soup = BeautifulSoup(site.text, "html.parser")
-            price = soup.find("span", attrs={"data-col": "info.last_trade.PDrCotVal"}).text
-            return (f"قیمت دلار {price} ریال")
-        except:
-            return ("مشکلی پیش آمد ، اتصال به اینترنت را بررسی کنید")        
-    elif currency_name == "یورو":
-        try:
-            site = requests.get("https://www.tgju.org/profile/price_eur")
-            soup = BeautifulSoup(site.text, "html.parser")
-            price = soup.find("span", attrs={"data-col": "info.last_trade.PDrCotVal"}).text
-            return (f"قیمت یورو {price} ریال")
-        except:
-            return ("مشکلی پیش آمد ، اتصال به اینترنت را بررسی کنید")    
-    elif currency_name == "طلا":
-        try:
-            site = requests.get("https://www.tgju.org/profile/geram18")
-            soup = BeautifulSoup(site.text, "html.parser")
-            price = soup.find("span", attrs={"data-col": "info.last_trade.PDrCotVal"}).text
-            return (f"قیمت طلا {price} ریال")
-        except:
-            return ("مشکلی پیش آمد ، اتصال به اینترنت را بررسی کنید")    
-    elif currency_name == "بیت کوین":
-        try:
-            site = requests.get("https://nobitex.ir/buy/btc/")
-            soup = BeautifulSoup(site.text, "html.parser")
-            price1 = soup.find("span", attrs={"class": "text-headline-large"}).text
-            price2 = soup.find("span", attrs={"class": "text-body-large"}).text
-            return (f"قیمت بیت کوین {price2} تومان\nبرابر با {price1} تتر")
-        except:
-            return ("مشکلی پیش آمد ، اتصال به اینترنت را بررسی کنید")
-    elif currency_name == "تتر":
-        try:
-            site = requests.get("https://nobitex.ir/price/usdt/")
-            soup = BeautifulSoup(site.text, "html.parser")
-            price = soup.find("span", attrs={"class": "text-body-large"}).text
-            return (f"قیمت تتر {price} تومان")
-        except:
-            return ("مشکلی پیش آمد ، اتصال به اینترنت را بررسی کنید")
-    elif currency_name == "گرام":
-        try:
-            site = requests.get("https://nobitex.ir/buy/gram/")
-            soup = BeautifulSoup(site.text, "html.parser")
-            price1 = soup.find("span", attrs={"class": "text-headline-large"}).text
-            price2 = soup.find("span", attrs={"class": "text-body-large"}).text
-            return (f"قیمت گرام {price2} تومان\nبرابر با {price1} تتر")
-        except:
-            return ("مشکلی پیش آمد ، اتصال به اینترنت را بررسی کنید")
-    elif currency_name == "سولانا":
-        try:
-            site = requests.get("https://nobitex.ir/price/sol/")
-            soup = BeautifulSoup(site.text, "html.parser")
-            price1 = soup.find("span", attrs={"class": "text-headline-large"}).text
-            price2 = soup.find("span", attrs={"class": "text-body-large"}).text
-            return (f"قیمت سولانا {price2} تومان\nبرابر با {price1} تتر")
-        except:
-            return ("مشکلی پیش آمد ، اتصال به اینترنت را بررسی کنید")
-    elif currency_name == "اتریوم":
-        try:
-            site = requests.get("https://nobitex.ir/buy/eth/")
-            soup = BeautifulSoup(site.text, "html.parser")
-            price1 = soup.find("span", attrs={"class": "text-headline-large"}).text
-            price2 = soup.find("span", attrs={"class": "text-body-large"}).text
-            return (f"قیمت اتریوم {price2} تومان\nبرابر با {price1} تتر")
-        except:
-            return ("مشکلی پیش آمد ، اتصال به اینترنت را بررسی کنید")
-    elif currency_name.upper() == "DOGECOIN" or currency_name == "دوج کوین":
-        try:
-            site = requests.get("https://nobitex.ir/buy/doge/")
-            soup = BeautifulSoup(site.text, "html.parser")
-            price1 = soup.find("span", attrs={"class": "text-headline-large"}).text
-            price2 = soup.find("span", attrs={"class": "text-body-large"}).text
-            return (f"قیمت دوج کوین {price2} تومان\nبرابر با {price1} تتر")
-        except:
-            return ("مشکلی پیش آمد ، اتصال به اینترنت را بررسی کنید")
-    elif currency_name.upper() == "SHIBA" or currency_name == "شیبا":
-        try:
-            site = requests.get("https://nobitex.ir/buy/1k_shib/")
-            soup = BeautifulSoup(site.text, "html.parser")
-            price1 = soup.find("span", attrs={"class": "text-headline-large"}).text
-            price2 = soup.find("span", attrs={"class": "text-body-large"}).text
-            return (f"قیمت شیبا {price2} تومان\nبرابر با {price1} تتر")
-        except:
-            return ("مشکلی پیش آمد ، اتصال به اینترنت را بررسی کنید")
-    elif currency_name == "ریپل":
-        try:
-            site = requests.get("https://nobitex.ir/buy/xrp/")
-            soup = BeautifulSoup(site.text, "html.parser")
-            price1 = soup.find("span", attrs={"class": "text-headline-large"}).text
-            price2 = soup.find("span", attrs={"class": "text-body-large"}).text
-            return (f"قیمت ریپل {price2} تومان\nبرابر با {price1} تتر")
-        except:
-            return ("مشکلی پیش آمد ، اتصال به اینترنت را بررسی کنید")
-    elif currency_name.upper() == "NOTCOIN" or currency_name == "نات کوین":
-        try:
-            site = requests.get("https://nobitex.ir/buy/not/")
-            soup = BeautifulSoup(site.text, "html.parser")
-            price1 = soup.find("span", attrs={"class": "text-headline-large"}).text
-            price2 = soup.find("span", attrs={"class": "text-body-large"}).text
-            return (f"قیمت نات کوین {price2} تومان\nبرابر با {price1} تتر")
-        except:
-            return ("مشکلی پیش آمد ، اتصال به اینترنت را بررسی کنید")
-    elif currency_name.upper() == "DOGS" or currency_name == "داگز":
-        try:
-            site = requests.get("https://nobitex.ir/buy/dogs/")
-            soup = BeautifulSoup(site.text, "html.parser")
-            price1 = soup.find("span", attrs={"class": "text-headline-large"}).text
-            price2 = soup.find("span", attrs={"class": "text-body-large"}).text
-            return (f"قیمت داگز {price2} تومان\nبرابر با {price1} تتر")
-        except:
-            return ("مشکلی پیش آمد ، اتصال به اینترنت را بررسی کنید")
-    elif currency_name.upper() == "CARDANO" or currency_name == "کاردانو":
-        try:
-            site = requests.get("https://nobitex.ir/price/ada/")
-            soup = BeautifulSoup(site.text, "html.parser")
-            price1 = soup.find("span", attrs={"class": "text-headline-large"}).text
-            price2 = soup.find("span", attrs={"class": "text-body-large"}).text
-            return (f"قیمت کاردانو {price2} تومان\nبرابر با {price1} تتر")
-        except:
-            return ("مشکلی پیش آمد ، اتصال به اینترنت را بررسی کنید")                                                                            
-    else:
-        return ("اطلاعاتی درمورد این ارز ندارم")
-
 # Currency price tool (with API)
 
 nobitex_data = None
@@ -199,142 +71,50 @@ def get_market_data():
     else:
         return nobitex_data     
 
+currencies = {
+    "گرام": "gram", "بیت کوین": "btc", "اتریوم": "eth", "ریپل": "xrp", "سولانا": "sol", "دوج کوین": "doge", "نات کوین": "not", "داگز": "dogs", "شیبا": "1k_shib", "کاردانو": "ada",
+    "سونیک": "s", "گراف": "grt", "سویی": "sui", "ترون": "trx", "سیناپس": "syn", "تزوس": "xtz", "دش": "dash", "زن": "zen", "فایل کوین": "fil", "دای": "dai", "بیبی دوج": "1b_babydoge",
+}
 def APIprices(currency_name):
     data = get_market_data()
-    if currency_name == "گرام":
+    if currency_name in currencies:
         try:
-            best_buy = int(data["stats"]["gram-rls"]["bestBuy"][:-1])
-            best_sell = int(data["stats"]["gram-rls"]["bestSell"][:-1])
-            change_percent = data["stats"]["gram-rls"]["dayChange"]
-            t_best_buy = data["stats"]["gram-usdt"]["bestBuy"]
-            t_best_sell = data["stats"]["gram-usdt"]["bestSell"]
-            t_change_percent = data["stats"]["gram-usdt"]["dayChange"]
-            return (f"⚜️قیمت برحسب تومان:\n🔺بهترین قیمت خرید:\n{best_buy:,}\n🔻بهترین قیمت فروش:\n{best_sell:,}\n% آخرین درصد تغییرات:\n{change_percent}\n⚜️قیمت برحسب تتر:\n🔺بهترین قیمت خرید:\n{t_best_buy}\n🔻بهترین قیمت فروش:\n{t_best_sell}\n% آخرین درصد تغییرات:\n{t_change_percent}")                           
+            best_buy = Decimal(data["stats"][f"{currencies[currency_name]}-rls"]["bestBuy"][:-1])
+            best_sell = Decimal(data["stats"][f"{currencies[currency_name]}-rls"]["bestSell"][:-1])
+            change_percent = data["stats"][f"{currencies[currency_name]}-rls"]["dayChange"]
+            t_best_buy = data["stats"][f"{currencies[currency_name]}-usdt"]["bestBuy"]
+            t_best_sell = data["stats"][f"{currencies[currency_name]}-usdt"]["bestSell"]
+            t_change_percent = data["stats"][f"{currencies[currency_name]}-usdt"]["dayChange"]
+            return (f"💳قیمت به تومان:\n▫️خرید: {best_buy:,}\n▫️فروش: {best_sell:,}\n▫️تغییرات: {change_percent}\n\n💳قیمت به تتر:\n▫️خرید: {t_best_buy}\n▫️فروش: {t_best_sell}\n▫️تغییرات: {t_change_percent}")                           
         except:
             return "مشکلی پیش اومد"
-    elif currency_name == "بیت کوین":
-        try:
-            best_buy = int(data["stats"]["btc-rls"]["bestBuy"][:-1])
-            best_sell = int(data["stats"]["btc-rls"]["bestSell"][:-1])
-            change_percent = data["stats"]["btc-rls"]["dayChange"]
-            t_best_buy = data["stats"]["btc-usdt"]["bestBuy"]
-            t_best_sell = data["stats"]["btc-usdt"]["bestSell"]
-            t_change_percent = data["stats"]["btc-usdt"]["dayChange"]
-            return (f"⚜️قیمت برحسب تومان:\n🔺بهترین قیمت خرید:\n{best_buy:,}\n🔻بهترین قیمت فروش:\n{best_sell:,}\n% آخرین درصد تغییرات:\n{change_percent}\n⚜️قیمت برحسب تتر:\n🔺بهترین قیمت خرید:\n{t_best_buy}\n🔻بهترین قیمت فروش:\n{t_best_sell}\n% آخرین درصد تغییرات:\n{t_change_percent}")
-        except:
-            return "مشکلی پیش اومد"
-    elif currency_name == "اتریوم":
-        try:
-            best_buy = int(data["stats"]["eth-rls"]["bestBuy"][:-1])
-            best_sell = int(data["stats"]["eth-rls"]["bestSell"][:-1])
-            change_percent = data["stats"]["eth-rls"]["dayChange"]
-            t_best_buy = data["stats"]["eth-usdt"]["bestBuy"]
-            t_best_sell = data["stats"]["eth-usdt"]["bestSell"]
-            t_change_percent = data["stats"]["eth-usdt"]["dayChange"]
-            return (f"⚜️قیمت برحسب تومان:\n🔺بهترین قیمت خرید:\n{best_buy:,}\n🔻بهترین قیمت فروش:\n{best_sell:,}\n% آخرین درصد تغییرات:\n{change_percent}\n⚜️قیمت برحسب تتر:\n🔺بهترین قیمت خرید:\n{t_best_buy}\n🔻بهترین قیمت فروش:\n{t_best_sell}\n% آخرین درصد تغییرات:\n{t_change_percent}")                           
-        except:
-            return "مشکلی پیش اومد"
-    elif currency_name == "ریپل":
-        try:
-            best_buy = int(data["stats"]["xrp-rls"]["bestBuy"][:-1])
-            best_sell = int(data["stats"]["xrp-rls"]["bestSell"][:-1])
-            change_percent = data["stats"]["xrp-rls"]["dayChange"]
-            t_best_buy = data["stats"]["xrp-usdt"]["bestBuy"]
-            t_best_sell = data["stats"]["xrp-usdt"]["bestSell"]
-            t_change_percent = data["stats"]["xrp-usdt"]["dayChange"]
-            return (f"⚜️قیمت برحسب تومان:\n🔺بهترین قیمت خرید:\n{best_buy:,}\n🔻بهترین قیمت فروش:\n{best_sell:,}\n% آخرین درصد تغییرات:\n{change_percent}\n⚜️قیمت برحسب تتر:\n🔺بهترین قیمت خرید:\n{t_best_buy}\n🔻بهترین قیمت فروش:\n{t_best_sell}\n% آخرین درصد تغییرات:\n{t_change_percent}")                           
-        except:
-            return "مشکلی پیش اومد"
-    elif currency_name == "سولانا":
-        try:
-            best_buy = int(data["stats"]["sol-rls"]["bestBuy"][:-1])
-            best_sell = int(data["stats"]["sol-rls"]["bestSell"][:-1])
-            change_percent = data["stats"]["sol-rls"]["dayChange"]
-            t_best_buy = data["stats"]["sol-usdt"]["bestBuy"]
-            t_best_sell = data["stats"]["sol-usdt"]["bestSell"]
-            t_change_percent = data["stats"]["sol-usdt"]["dayChange"]
-            return (f"⚜️قیمت برحسب تومان:\n🔺بهترین قیمت خرید:\n{best_buy:,}\n🔻بهترین قیمت فروش:\n{best_sell:,}\n% آخرین درصد تغییرات:\n{change_percent}\n⚜️قیمت برحسب تتر:\n🔺بهترین قیمت خرید:\n{t_best_buy}\n🔻بهترین قیمت فروش:\n{t_best_sell}\n% آخرین درصد تغییرات:\n{t_change_percent}")                           
-        except:
-            return "مشکلی پیش اومد"
-    elif currency_name == "دوج کوین":
-        try:
-            best_buy = int(data["stats"]["doge-rls"]["bestBuy"][:-1])
-            best_sell = int(data["stats"]["doge-rls"]["bestSell"][:-1])
-            change_percent = data["stats"]["doge-rls"]["dayChange"]
-            t_best_buy = data["stats"]["doge-usdt"]["bestBuy"]
-            t_best_sell = data["stats"]["doge-usdt"]["bestSell"]
-            t_change_percent = data["stats"]["doge-usdt"]["dayChange"]
-            return (f"⚜️قیمت برحسب تومان:\n🔺بهترین قیمت خرید:\n{best_buy:,}\n🔻بهترین قیمت فروش:\n{best_sell:,}\n% آخرین درصد تغییرات:\n{change_percent}\n⚜️قیمت برحسب تتر:\n🔺بهترین قیمت خرید:\n{t_best_buy}\n🔻بهترین قیمت فروش:\n{t_best_sell}\n% آخرین درصد تغییرات:\n{t_change_percent}")                         
-        except:
-            return "مشکلی پیش اومد"
-    elif currency_name == "نات کوین":
-        try:
-            best_buy = data["stats"]["not-rls"]["bestBuy"]
-            best_sell = data["stats"]["not-rls"]["bestSell"]
-            change_percent = data["stats"]["not-rls"]["dayChange"]
-            t_best_buy = data["stats"]["not-usdt"]["bestBuy"]
-            t_best_sell = data["stats"]["not-usdt"]["bestSell"]
-            t_change_percent = data["stats"]["not-usdt"]["dayChange"]
-            return (f"⚜️قیمت برحسب تومان:\n🔺بهترین قیمت خرید:\n{best_buy}\n🔻بهترین قیمت فروش:\n{best_sell}\n% آخرین درصد تغییرات:\n{change_percent}\n⚜️قیمت برحسب تتر:\n🔺بهترین قیمت خرید:\n{t_best_buy}\n🔻بهترین قیمت فروش:\n{t_best_sell}\n% آخرین درصد تغییرات:\n{t_change_percent}")                           
-        except:
-            return "مشکلی پیش اومد"
-    elif currency_name == "داگز":
-        try:
-            best_buy = data["stats"]["dogs-rls"]["bestBuy"]
-            best_sell = data["stats"]["dogs-rls"]["bestSell"]
-            change_percent = data["stats"]["dogs-rls"]["dayChange"]
-            t_best_buy = data["stats"]["dogs-usdt"]["bestBuy"]
-            t_best_sell = data["stats"]["dogs-usdt"]["bestSell"]
-            t_change_percent = data["stats"]["dogs-usdt"]["dayChange"]
-            return (f"⚜️قیمت برحسب تومان:\n🔺بهترین قیمت خرید:\n{best_buy}\n🔻بهترین قیمت فروش:\n{best_sell}\n% آخرین درصد تغییرات:\n{change_percent}\n⚜️قیمت برحسب تتر:\n🔺بهترین قیمت خرید:\n{t_best_buy}\n🔻بهترین قیمت فروش:\n{t_best_sell}\n% آخرین درصد تغییرات:\n{t_change_percent}")                           
-        except:
-            return "مشکلی پیش اومد" 
-    elif currency_name == "شیبا":
-        try:
-            best_buy = int(data["stats"]["1k_shib-rls"]["bestBuy"][:-1])
-            best_sell = int(data["stats"]["1k_shib-rls"]["bestSell"][:-1])
-            change_percent = data["stats"]["1k_shib-rls"]["dayChange"]
-            t_best_buy = data["stats"]["1k_shib-usdt"]["bestBuy"]
-            t_best_sell = data["stats"]["1k_shib-usdt"]["bestSell"]
-            t_change_percent = data["stats"]["1k_shib-usdt"]["dayChange"]
-            return (f"⚜️قیمت برحسب تومان:\n🔺بهترین قیمت خرید:\n{best_buy:,}\n🔻بهترین قیمت فروش:\n{best_sell:,}\n% آخرین درصد تغییرات:\n{change_percent}\n⚜️قیمت برحسب تتر:\n🔺بهترین قیمت خرید:\n{t_best_buy}\n🔻بهترین قیمت فروش:\n{t_best_sell}\n% آخرین درصد تغییرات:\n{t_change_percent}")                           
-        except:
-            return "مشکلی پیش اومد"
-    elif currency_name == "کاردانو":
-        try:
-            best_buy = int(data["stats"]["ada-rls"]["bestBuy"][:-1])
-            best_sell = int(data["stats"]["ada-rls"]["bestSell"][:-1])
-            change_percent = data["stats"]["ada-rls"]["dayChange"]
-            t_best_buy = data["stats"]["ada-usdt"]["bestBuy"]
-            t_best_sell = data["stats"]["ada-usdt"]["bestSell"]
-            t_change_percent = data["stats"]["ada-usdt"]["dayChange"]
-            return (f"⚜️قیمت برحسب تومان:\n🔺بهترین قیمت خرید:\n{best_buy:,}\n🔻بهترین قیمت فروش:\n{best_sell:,}\n% آخرین درصد تغییرات:\n{change_percent}\n⚜️قیمت برحسب تتر:\n🔺بهترین قیمت خرید:\n{t_best_buy}\n🔻بهترین قیمت فروش:\n{t_best_sell}\n% آخرین درصد تغییرات:\n{t_change_percent}")                           
-        except:
-            return "مشکلی پیش اومد"
+
     elif currency_name == "تتر":
         try:
             best_buy = int(data["stats"]["usdt-rls"]["bestBuy"][:-1])
             best_sell = int(data["stats"]["usdt-rls"]["bestSell"][:-1])
             change_percent = data["stats"]["usdt-rls"]["dayChange"]
-            return (f"⚜️قیمت برحسب تومان:\n🔺بهترین قیمت خرید:\n{best_buy:,}\n🔻بهترین قیمت فروش:\n{best_sell:,}\n% آخرین درصد تغییرات:\n{change_percent}")                           
+            return (f"💳قیمت به تومان:\n▫️خرید: {best_buy:,}\n▫️فروش: {best_sell:,}\n▫️تغییرات: {change_percent}")                           
         except:
             return "مشکلی پیش اومد"
+    
     elif currency_name == "دلار":
         try:
             site = requests.get("https://www.tgju.org/profile/price_dollar_rl")
             soup = BeautifulSoup(site.text, "html.parser")
             rls_price = soup.find("span", attrs={"data-col": "info.last_trade.PDrCotVal"}).text
             toman_price = int(rls_price.replace(",", "")) // 10
-            return (f"⚜️قیمت دلار:\n{toman_price:,} تومان")
+            return (f"💳قیمت دلار:\n{toman_price:,} تومان")
         except:
             return "مشکلی پیش اومد"
+    
     elif currency_name == "طلا":
         try:
             site = requests.get("https://www.tgju.org/profile/geram18")
             soup = BeautifulSoup(site.text, "html.parser")
             rls_price = soup.find("span", attrs={"data-col": "info.last_trade.PDrCotVal"}).text
             toman_price = int(rls_price.replace(",", "")) // 10
-            return (f"⚜️قیمت طلا:\n{toman_price:,} تومان")
+            return (f"💳قیمت طلا:\n{toman_price:,} تومان")
         except:
             return "مشکلی پیش اومد"
     elif currency_name == "یورو":
@@ -343,7 +123,7 @@ def APIprices(currency_name):
             soup = BeautifulSoup(site.text, "html.parser")
             rls_price = soup.find("span", attrs={"data-col": "info.last_trade.PDrCotVal"}).text
             toman_price = int(rls_price.replace(",", "")) // 10
-            return (f"⚜️قیمت یورو:\n{toman_price:,} تومان") 
+            (f"💳قیمت یورو:\n{toman_price:,} تومان") 
         except:
             return "مشکلی پیش اومد"                                                                                  
     else:
