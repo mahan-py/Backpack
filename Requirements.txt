@@ -7,3 +7,4 @@ pathlib
 pymupdf
 natsort
 edge_tts
+python-dateutil

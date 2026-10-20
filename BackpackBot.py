@@ -6,7 +6,10 @@ import Backpack
 import sqlite3
 import time
 from datetime import date
+from dateutil.relativedelta import relativedelta
 from pathlib import Path
+import datetime
+
 
 # Some messages were too long so i created txt files and wrote them there
 with open("Bot_help.txt", "r", encoding= "utf-8") as file2:
@@ -285,6 +288,7 @@ format_converter_button = types.KeyboardButton("تبدیل فرمت📁")
 text_to_speech_button = types.KeyboardButton("متن به صوت🎙")
 user_info_button = types.KeyboardButton("تلگرام من👤")
 inline_keyboard_maker_button = types.KeyboardButton("دکمه شیشه ای🍷")
+buy_premium_button = types.InlineKeyboardButton("پریمیوم💎")
 keyboard.add(
 	average_button, bmi_button,
 	currency_button, password_button,
@@ -409,7 +413,7 @@ def get_height(message, weight):
 def choose_currency(message):
 	currency_keyboard = types.ReplyKeyboardMarkup(row_width=3, resize_keyboard=True)
 	dollar_burron = types.KeyboardButton("دلار")
-	euro_button = types.KeyboardButton("یورو")
+	tron_button = types.KeyboardButton("ترون")
 	gold_button = types.KeyboardButton("طلا")
 	bitcoin_button = types.KeyboardButton("بیت کوین")
 	tether_button = types.KeyboardButton("تتر")
@@ -417,10 +421,18 @@ def choose_currency(message):
 	solana_button = types.KeyboardButton("سولانا")
 	ethereum_button = types.KeyboardButton("اتریوم")
 	ripple_button = types.KeyboardButton("ریپل")
+	sui_button = types.KeyboardButton("سویی")
+	bd_button = types.KeyboardButton("بیبی دوج")
+	not_button = types.KeyboardButton("نات کوین")
+	dogs_button = types.KeyboardButton("داگز")
+	shiba_button = types.KeyboardButton("شیبا")
+	sonik_button = types.KeyboardButton("سونیک")
 	currency_keyboard.add(
 			dollar_burron, tether_button, gold_button,
-			euro_button, bitcoin_button, gram_button,
-			solana_button, ethereum_button, ripple_button
+			tron_button, bitcoin_button, gram_button,
+			solana_button, ethereum_button, ripple_button,
+			sui_button, bd_button, not_button,
+			dogs_button, shiba_button, sonik_button
 	)
 
 	Cancel_markup = types.InlineKeyboardMarkup()
@@ -1197,9 +1209,149 @@ def send_ready_message_again(call):
 		bot.send_message(call.message.chat.id, "پیام شما حذف شده است. لطفا یک پیام جدید ارسال کنید", reply_markup= Cancel_markup)
 		bot.register_next_step_handler(call.message, preview)					
 
-@bot.message_handler(func= lambda message: message.text == "پریمیوم" and message.chat.type == "private")
+# Premium button run
+
+# Check the user subscribtion
+def is_premium(user_id):
+
+	conn = get_database()
+	cursor = conn.cursor()
+	cursor.execute("SELECT is_premium FROM users WHERE user_id = ?", (user_id,))
+	result = cursor.fetchone()
+	
+	if result is None:
+		conn.close()
+		return False
+	
+	expiry = result[0]
+	if expiry == "0" or not expiry:
+		conn.close()
+		return False
+	
+	expiry_date = datetime.date.fromisoformat(expiry)
+	if expiry_date <= datetime.date.today():
+		
+		cursor.execute("UPDATE users SET is_premium = 0 WHERE user_id = ?", (user_id,))
+		conn.commit()
+		conn.close()
+        
+		return False
+	
+	conn.close()
+	return True
+
+# Activate premium for user
+def activate_premium(user_id):
+	expiry_date = date.today() + relativedelta(months = 1)
+
+	conn = get_database()
+	cursor = conn.cursor()
+	cursor.execute("UPDATE users SET is_premium = ? WHERE user_id = ?", (expiry_date.isoformat(), user_id))
+	conn.commit()
+	conn.close()
+
+	return expiry_date
+
+# Managing premium
+@bot.message_handler(func= lambda message: message.text == "پریمیوم💎" and message.chat.type == "private")
 def buy_premium(message):
-	pass
+	premium_keyboard = types.InlineKeyboardMarkup(row_width= 2)
+	buy_button = types.InlineKeyboardButton("خرید اشتراک یک ماهه", callback_data= "buy_premium_one_month", style= "success")
+	info_button = types.InlineKeyboardButton("پریمیوم من", callback_data= "show_premium_info", style= "primary")
+	premium_info_button = types.InlineKeyboardButton("قابلیت ها", callback_data= "show_premium_features", style= "primary")
+	premium_keyboard.add(
+		info_button, premium_info_button,
+		buy_button,
+	)
+	bot.reply_to(message, "از منوی زیر گزینه مدنظر را انتخاب کنید:", reply_markup= premium_keyboard)
+
+@bot.callback_query_handler(func= lambda call: call.data == "buy_premium_one_month")
+def buy_backpack_premium(call):
+	this_function_keyboard = types.InlineKeyboardMarkup(row_width=2)
+	send_pic_button = types.InlineKeyboardButton("ارسال رسید", callback_data= "send_payment_pic", style= "success")
+	this_function_keyboard.add(
+		send_pic_button,
+	)
+	
+	bot.answer_callback_query(call.id)
+	if is_premium(call.from_user.id) == True:
+		bot.edit_message_text("شما اشتراک فعال دارید و درحال حاضر امکان تمدید اشتراک وجود ندارد", call.message.chat.id, call.message.message_id)
+	else:	
+		bot.edit_message_text(f"👤کاربر: {call.from_user.username}\n\n🆔آیدی عددی: {call.from_user.id}\n\n💎نوع اشتراک: یک ماهه\n\n💰مبلغ: 100 هزار تومان\n\n💸لطفا پس از واریز مبلغ به شماره کارت زیر ، روی دکمه ارسال رسید کلیک کنید و فقط عکس رسید را ارسال کنید\n\n<code>6219-8618-4765-8274</code>\nبیدی", call.message.chat.id, call.message.message_id, parse_mode= "HTML", reply_markup= this_function_keyboard)
+
+@bot.callback_query_handler(func= lambda call: call.data == "send_payment_pic")
+def get_payment_pic(call):
+
+	bot.answer_callback_query(call.id)
+	bot.edit_message_text("عکس رسید را ارسال کنید. پس از تایید ، اشتراک شما فعال می شود.", call.message.chat.id, call.message.message_id)
+	bot.register_next_step_handler(call.message, check_payment_pic)
+
+def check_payment_pic(message):
+	check_payment_keyboard = types.InlineKeyboardMarkup(row_width=1)
+	accept_button = types.InlineKeyboardButton("تایید", callback_data= f"approve_{message.from_user.id}", style= "success")
+	reject_button = types.InlineKeyboardButton("رد", callback_data= f"reject_{message.from_user.id}", style= "danger")
+	check_payment_keyboard.add(
+		accept_button,
+		reject_button,
+	)
+	if message.content_type != "photo":
+		bot.reply_to(message, "لطفا فقط عکس رسید را ارسال کنید")
+		bot.register_next_step_handler(message, check_payment_pic)
+	else:
+		bot.copy_message(5835989996, message.chat.id, message.message_id, caption= f"👤از طرف: {message.from_user.username}\n\n🆔آیدی نامبر: {message.from_user.id}\n\n💎اشتراک یک ماهه\n\n💰مبلغ: 100 هزار تومان", reply_markup= check_payment_keyboard)
+		bot.reply_to(message, "عکس رسید شما برای ادمین ارسال شد و پس از تایید اشتراک شما فعال می شود.")
+
+
+@bot.callback_query_handler(func= lambda call: call.data.startswith(("approve_", "reject_")))
+def handle_premium_demand(call):
+	bot.answer_callback_query(call.id)
+	action, user_id = call.data.split("_", 1)
+	user_id = int(user_id)
+	bot.delete_message(call.message.chat.id, call.message.message_id)
+
+	if action == "approve":
+		expiry_date = activate_premium(user_id)
+		bot.send_message(user_id, f"پرداخت شما تایید شد و اشتراک پریمیوم برای شما فعال شد ✅\nتاریخ انقضای اشتراک: {expiry_date}")
+	elif action == "reject":
+		support_keyboard = types.InlineKeyboardMarkup(row_width= 1)
+		support_button = types.InlineKeyboardButton("پشتیبانی👤", url= "https://t.me/SteelAryan", style= "primary")
+		support_keyboard.add(
+			support_button,
+		)
+		bot.send_message(user_id, "رسید پرداختی شما تایید نشد ❌", reply_markup= support_keyboard)
+
+
+@bot.callback_query_handler(func= lambda call: call.data == "show_premium_info")
+def show_premium_info(call):
+	bot.answer_callback_query(call.id)
+
+	conn = get_database()
+	cursor = conn.cursor()
+	cursor.execute("SELECT is_premium FROM users WHERE user_id = ?", (call.from_user.id,))
+	result = cursor.fetchone()
+	conn.close()
+	
+	if call.from_user.username in bot_owners:
+		bot.edit_message_text("تاج سر مایید ارباب ماهان!", call.message.chat.id, call.message.message_id)
+		return 
+
+	if result is None or not result[0] or result[0] == "0":
+		bot.edit_message_text("شما اشتراک پریمیوم ندارید 😕", call.message.chat.id, call.message.message_id)
+		return
+
+	expiry_date = date.fromisoformat(result[0])
+	remaining_days = (expiry_date - date.today()).days
+	
+	if remaining_days <= 0:
+		bot.edit_message_text("شما اشتراک پریمیوم ندارید 😕", call.message.chat.id, call.message.message_id)
+		return
+
+	bot.edit_message_text(f"👤کاربر: {call.from_user.username}\n\n🆔آیدی نامبر: {call.from_user.id}\n\n💎نوع اشتراک: یک ماهه\n\nتاریخ انقضای اشتراک: {expiry_date}\nباقی مانده: {remaining_days} روز", call.message.chat.id, call.message.message_id)
+
+@bot.callback_query_handler(func= lambda call: call.data == "show_premium_features")
+def show_premium_features(call):
+	bot.answer_callback_query(call.id)
+	bot.copy_message(call.message.chat.id, "@Backpacktool", 25)
 
 # Group message handler zone
 # Here, we handle messages those have sent by group users
