@@ -213,6 +213,7 @@ def get_admin_message(call):
 	bot.answer_callback_query(call.id)
 	bot.send_message(call.message.chat.id, "پیامی که میخواید به تمام کاربرای بات بفرستید ارسال کنید", reply_markup= admin_management_keyboard)
 	bot.register_next_step_handler(call.message, send_broadcast)
+
 def send_broadcast(message):
 	conn = get_database()
 	cursor = conn.cursor()
@@ -256,24 +257,12 @@ def set_premium_user(message):
 	go_back_button = types.InlineKeyboardButton("برگشت به منو", callback_data= "admin_panel", style= "danger")
 	admin_management_keyboard.add(go_back_button)
 
-	today = date.today()
 	try:
-		premium_until = today.replace(year=today.year + 1)
-	except ValueError:
-		premium_until = today.replace(year=today.year + 1, day=28)
-	
-	premium_until = premium_until.isoformat()
-	
-	conn = get_database()
-	cursor = conn.cursor()
-	cursor.execute("""UPDATE users SET is_premium = ? WHERE user_id = ?""", (premium_until, message.text))
-	conn.commit()
-	updated = cursor.rowcount
-	conn.close()
-	if updated == 0:
-		bot.send_message(message.chat.id, "کاربری با این آیدی پیدا نشد❌", reply_markup= admin_management_keyboard)
-	else:
-		bot.send_message(message.chat.id, f"اشتراک پریمیوم با موفقیت فعال شد✅\n\nآیدی کاربر: `{message.text}`\nنوع اشتراک: یک ساله\nتاریخ انقضا: {premium_until}", parse_mode= "Markdown", reply_markup= admin_management_keyboard)			
+		premium_until = activate_premium(int(message.text))
+		bot.send_message(message.chat.id, f"اشتراک پریمیوم با موفقیت فعال شد✅\n\nآیدی کاربر: `{message.text}`\nنوع اشتراک: یک ماهه\nتاریخ انقضا: {premium_until}", parse_mode= "Markdown", reply_markup= admin_management_keyboard)
+	except:
+		bot.send_message(message.chat.id, "خطا در فعال سازی اشتراک پریمیوم ❌", reply_markup= admin_management_keyboard)
+					
 
 
 # Main keyboard buttons
@@ -295,6 +284,7 @@ keyboard.add(
 	date_difference_button, lottery_button, 
 	format_converter_button, text_to_speech_button, 
 	user_info_button, inline_keyboard_maker_button,
+	buy_premium_button,
 )
 
 # Starting the bot for the first time or reaction to /start
@@ -435,9 +425,16 @@ def choose_currency(message):
 			dogs_button, shiba_button, sonik_button
 	)
 
-	Cancel_markup = types.InlineKeyboardMarkup()
+	Cancel_markup = types.InlineKeyboardMarkup(row_width= 1)
 	Cancel_button = types.InlineKeyboardButton("برگشت به منوی اصلی", callback_data= "cancel", style= "danger")
-	Cancel_markup.add(Cancel_button)
+	suggest_button = types.InlineKeyboardButton("پیشنهاد ارز 💎", callback_data= "suggest_currency", style= "primary")
+	if is_premium(message.from_user.id) == False:
+		Cancel_markup.add(Cancel_button)
+	else:
+		Cancel_markup.add(
+			suggest_button,
+			Cancel_button,
+			)
 
 	if not check_membership(message.from_user.id):
 		send_membership_message(message.chat.id)
@@ -448,7 +445,7 @@ def choose_currency(message):
 
 def find_price(message):
 
-	Cancel_markup = types.InlineKeyboardMarkup()
+	Cancel_markup = types.InlineKeyboardMarkup(row_width= 1)
 	Cancel_button = types.InlineKeyboardButton("برگشت به منوی اصلی", callback_data= "cancel", style= "danger")
 	Cancel_markup.add(Cancel_button)
 
@@ -456,6 +453,21 @@ def find_price(message):
 	price = Backpack.APIprices(currency_name)
 	bot.reply_to(message, price, reply_markup= Cancel_markup)
 	bot.register_next_step_handler(message, find_price)
+
+@bot.callback_query_handler(func= lambda call: call.data == "suggest_currency")
+def get_user_suggestion(call):
+	Cancel_markup = types.InlineKeyboardMarkup(row_width= 1)
+	Cancel_button = types.InlineKeyboardButton("برگشت به منوی اصلی", callback_data= "cancel", style= "danger")
+	Cancel_markup.add(Cancel_button)
+
+	bot.answer_callback_query(call.id)
+	bot.clear_step_handler_by_chat_id(call.message.chat.id)
+	bot.edit_message_text("ارز پیشنهادی خود را ارسال کنید. در صورت تایید ، توی آپدیت بعدی به ربات اضافه میشه", call.message.chat.id, call.message.message_id, reply_markup= Cancel_markup)
+	bot.register_next_step_handler(call.message, send_suggestion_to_admin)
+
+def send_suggestion_to_admin(message):
+	bot.send_message(5835989996, f"پشنهاد ارز از طرف: {message.from_user.id}\nنام کاربری: {message.from_user.username}\nارز پیشنهادی: {message.text}")
+	bot.reply_to(message, "ارز پیشنهادی شما با موفقیت ارسال شد ✅", reply_markup= keyboard)
 
 # Password generator
 @bot.message_handler(func= lambda message: message.text == "تولید رمز🔑" and message.chat.type == "private")
@@ -1081,21 +1093,57 @@ def get_button_link(call):
 	bot.answer_callback_query(call.id)
 	bot.delete_message(call.message.chat.id, call.message.message_id)
 	bot.send_message(call.message.chat.id, "لینک خود را ارسال کنید", reply_markup= Cancel_markup)
-	bot.register_next_step_handler(call.message, get_button_text, chat_id, from_chat_id, message_id)
+	bot.register_next_step_handler(call.message, get_button_text)
 
-def get_button_text(message, chat_id, from_chat_id, message_id):
+def get_button_text(message):
 	button_link = message.text
 	Cancel_markup = types.InlineKeyboardMarkup()
 	Cancel_button = types.InlineKeyboardButton("لغو فرایند", callback_data= "cancel_inline_button", style= "danger")
 	Cancel_markup.add(Cancel_button)
+	user_subscibtion = is_premium(message.from_user.id)
 
 	bot.reply_to(message, "متن دکمه را ارسال کنید. برای ظاهر بهتر ، بیشتر از دو کلمه نباشد.", reply_markup= Cancel_markup)
-	bot.register_next_step_handler(message, create_button, button_link, chat_id, from_chat_id, message_id)
+	if user_subscibtion == False:
+		button_text = "Nothing"
+		bot.register_next_step_handler(message, create_button, button_link, button_text)
+	
+	elif user_subscibtion == True:
+		bot.register_next_step_handler(message, get_button_color, button_link)
 
-def create_button(message, button_link, chat_id, from_chat_id, message_id):
-	button_text = message.text
+def get_button_color(message, button_link):
 	user_id = message.from_user.id
-	glass_buttons[user_id]["buttons"].append((button_text, button_link))
+	color_keyboard = types.ReplyKeyboardMarkup(row_width= 2, resize_keyboard= True)
+	red = types.KeyboardButton("قرمز")
+	green = types.KeyboardButton("سبز")
+	blue = types.KeyboardButton("آبی")
+	simple = types.KeyboardButton("ساده")
+	color_keyboard.add(
+		red, blue,
+		green, simple,
+	)
+
+	button_text = message.text
+	#glass_buttons[user_id]["buttons"].append([button_text, button_link])
+	bot.reply_to(message, "رنگ دکمه را از منوی زیر انتخاب کنید", reply_markup= color_keyboard)
+	bot.register_next_step_handler(message, create_button, button_link, button_text)
+
+def create_button(message, button_link, button_text):
+
+	user_id = message.from_user.id
+	user_subscibtion = is_premium(user_id)
+	chat_id = message.chat.id
+	from_chat_id = message.chat.id
+	message_id = glass_buttons[user_id]["message_id"]
+
+	colors = {"آبی": "primary", "سبز": "success", "قرمز": "danger", "ساده": None}
+	
+	if user_subscibtion == True:
+		button_color = colors[message.text]
+		glass_buttons[user_id]["buttons"].append((button_color, button_text, button_link))
+	
+	elif user_subscibtion == False:
+		button_text = message.text
+		glass_buttons[user_id]["buttons"].append((button_text, button_link))	
 
 	success_markup = types.InlineKeyboardMarkup(row_width= 1)
 	send_button = types.InlineKeyboardButton("ارسال پیام به کانال/گروه", callback_data= "send_user_post", style= "success")
@@ -1105,20 +1153,41 @@ def create_button(message, button_link, chat_id, from_chat_id, message_id):
 		cancel_button,
 		)
 
+	
 	prepared_keyboard = create_user_keyboard(user_id)
 	if len(glass_buttons[user_id]["buttons"]) < 3:
 		prepared_keyboard.add(types.InlineKeyboardButton("➕اضافه کردن دکمه", callback_data= "add_inline_button"))
 		bot.copy_message(chat_id, from_chat_id, message_id, reply_markup= prepared_keyboard)
 		bot.send_message(message.chat.id, "✅دکمه با موفقیت اضافه شد", reply_markup= success_markup)
-	elif len(glass_buttons[user_id]["buttons"]) == 3:
+	
+	elif len(glass_buttons[user_id]["buttons"]) == 3 and user_subscibtion == False:
 		bot.copy_message(chat_id, from_chat_id, message_id, reply_markup= prepared_keyboard)
 		bot.send_message(message.chat.id, "✅دکمه با موفقیت اضافه شد. امکان اضافه کردن بیشتر از سه دکمه برای کاربران معمولی وجود ندارد", reply_markup= success_markup)
 
+	elif user_subscibtion == True and 3 <= len(glass_buttons[user_id]["buttons"]) < 7:
+		prepared_keyboard.add(types.InlineKeyboardButton("➕اضافه کردن دکمه", callback_data= "add_inline_button"))
+		bot.copy_message(chat_id, from_chat_id, message_id, reply_markup= prepared_keyboard)
+		bot.send_message(message.chat.id, "✅دکمه با موفقیت اضافه شد", reply_markup= success_markup)
+
+	elif user_subscibtion == True and len(glass_buttons[user_id]["buttons"]) == 7:
+		bot.copy_message(chat_id, from_chat_id, message_id, reply_markup= prepared_keyboard)
+		bot.send_message(message.chat.id, "✅دکمه با موفقیت اضافه شد. امکان اضافه کردن بیشتر از هفت دکمه وجود ندارد", reply_markup= success_markup)
+
+
 def create_user_keyboard(user_id):
+	
+	user_subscibtion = is_premium(user_id)
 	user_keyboard = types.InlineKeyboardMarkup(row_width= 2)
 	buttons = []
-	for button_text, button_link in glass_buttons[user_id]["buttons"]:
-		buttons.append(types.InlineKeyboardButton(text= button_text, url= button_link))
+	
+	if user_subscibtion == False:
+		for button_text, button_link in glass_buttons[user_id]["buttons"]:
+			buttons.append(types.InlineKeyboardButton(text= button_text, url= button_link))
+	
+	elif user_subscibtion == True:
+		for button_color, button_text, button_link in glass_buttons[user_id]["buttons"]:
+			buttons.append(types.InlineKeyboardButton(text= button_text, url= button_link, style= button_color))
+
 	user_keyboard.add(*buttons)	
 	return user_keyboard
 
@@ -1207,7 +1276,7 @@ def send_ready_message_again(call):
 	else:
 		bot.answer_callback_query(call.id)
 		bot.send_message(call.message.chat.id, "پیام شما حذف شده است. لطفا یک پیام جدید ارسال کنید", reply_markup= Cancel_markup)
-		bot.register_next_step_handler(call.message, preview)					
+		bot.register_next_step_handler(call.message, preview)
 
 # Premium button run
 
