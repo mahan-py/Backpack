@@ -105,7 +105,7 @@ admin_keyboard.add(
 	send_broadcast_button,
 )
 
-@bot.message_handler(commands= ['admin'], func= lambda message: message.chat.type == "private")
+@bot.message_handler(commands= ['mahanbd'], func= lambda message: message.chat.type == "private")
 def check_admin(message):
 	if is_admin(message.from_user.id) == False and message.from_user.username not in bot_owners:
 		bot.reply_to(message, "❌شما ادمین نیستید و به پنل دسترسی ندارید")
@@ -350,7 +350,7 @@ def get_weight(message):
 	Cancel_markup = types.InlineKeyboardMarkup()
 	back_markup = types.InlineKeyboardMarkup()
 	Cancel_button = types.InlineKeyboardButton("لغو", callback_data= "cancel", style= "danger")
-	back_button = types.InlineKeyboardButton("مرحله قبل", callback_data= "Back")
+	back_button = types.InlineKeyboardButton("مرحله قبل", callback_data= "Back", style="primary")
 	Cancel_markup.add(Cancel_button)
 	back_markup.add(back_button, Cancel_button)
 	try:
@@ -375,6 +375,7 @@ def cancel_handler(call):
 @bot.callback_query_handler(func= lambda call: call.data == "Back")
 def back_handler(call):
 		bot.answer_callback_query(call.id)
+		bot.delete_message(call.message.chat.id, call.message.message_id)
 		restart_getting_weight(call.message)
 	
 def get_height(message, weight):
@@ -388,12 +389,71 @@ def get_height(message, weight):
 			bot.register_next_step_handler(message, get_height, weight)
 		else:
 			user_BMI = Backpack.bmi(weight, height)
-
-			bmi_information_sources = types.InlineKeyboardMarkup()
-			source = types.InlineKeyboardButton("اطلاعات بیشتر", url= "https://fa.wikipedia.org/wiki/%D8%B4%D8%A7%D8%AE%D8%B5_%D8%AA%D9%88%D8%AF%D9%87_%D8%A8%D8%AF%D9%86%DB%8C")
-			bmi_information_sources.add(source)
-
-			bot.send_message(message.chat.id, user_BMI, reply_markup= bmi_information_sources)	
+			rich_message = types.InputRichMessage(
+				html=f"""
+				<h3>شاخص توده بدنی شما برابر است با: {user_BMI}</h3> 
+                <table bordered>
+                    <tr>
+                        <th>رده</th>
+                        <th>BMI</th>
+                    </tr>
+                    <tr>
+                        <td>کمبود وزن شدید</td>
+                        <td>کمتر از 16</td>
+                    </tr>
+                    <tr>
+                        <td>کمبود وزن</td>
+                        <td> از 16 تا 18.5</td>
+                    </tr>
+                    <tr>
+                        <td>عادی</td>
+                        <td>از 18.5 تا 25</td>
+                    </tr>
+					<tr>
+                        <td>اضافه وزن</td>
+                        <td>از 25 تا 30</td>
+                    </tr>
+					<tr>
+                        <td>چاقی درجه یک</td>
+                        <td>از 30 تا 35</td>
+                    </tr>
+					<tr>
+                        <td>چاقی درجه دو</td>
+                        <td>از 35 تا 40</td>
+                    </tr>
+					<tr>
+                        <td>چاقی درجه سه</td>
+                        <td>بیش از 40</td>
+                    </tr>
+                </table>
+				<h3>شاخص توده بدنی در سنین مختلف باید چقدر باشد؟</h3> 
+                <table bordered>
+                    <tr>
+                        <th>محدوده سنی</th>
+                        <th>شاخص مطلوب</th>
+                    </tr>
+                    <tr>
+                        <td>از 17 تا 24 سالگی</td>
+                        <td>21</td>
+                    </tr>
+                    <tr>
+                        <td>از 24 تا 44 سالگی</td>
+                        <td>24</td>
+                    </tr>
+                    <tr>
+                        <td>از 44 تا 54 سالگی</td>
+                        <td>25</td>
+                    </tr>
+					<tr>
+                        <td>بالای 54 سالگی</td>
+                        <td>27</td>
+                    </tr>
+                </table>
+				<p>⚠️جدول بالا برای افراد ورزشکار ، باردار ، خیلی قد کوتاه و یا خیلی قد بلند کاربرد ندارد</p>
+				"""
+			)
+			bot.send_rich_message(message.chat.id, rich_message, reply_markup= keyboard)	
+	
 	except ValueError:
 		bot.reply_to(message, "لطفا عدد ارسال کنید")
 		bot.register_next_step_handler(message, get_height, weight)
@@ -850,7 +910,7 @@ def get_lottery_input(message):
 	if not check_membership(message.from_user.id):
 		send_membership_message(message.chat.id)
 	else:	
-		bot.reply_to(message, "اسامی را وارد کنید", reply_markup= Cancel_markup)
+		bot.reply_to(message, "اسامی رو ارسال کنید\n⚠️ به این نکته توجه کنید اسم های دوبخشی مثل امیر حسین دوتا اسم محسوب میشن", reply_markup= Cancel_markup)
 		bot.register_next_step_handler(message, do_lottery)
 
 lottery_users = {}
@@ -871,6 +931,7 @@ def do_lottery(message):
 @bot.callback_query_handler(func= lambda call: call.data == "do_lottery_again")	
 def do_lottery_again(call):
 	bot.answer_callback_query(call.id)
+	bot.delete_message(call.message.chat.id, call.message.message_id)
 	chat_id = call.message.chat.id
 	user_text = lottery_users.get(chat_id)
 	bot_choice = Backpack.lottery(user_text)
@@ -895,29 +956,39 @@ def cancel_lottery(call):
 @bot.message_handler(func= lambda message: message.text == "تبدیل فرمت📁" and message.chat.type == "private")
 def get_convert_type(message):
 	format_converter_keyboard = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard= True)
-	png_jpg_button = types.KeyboardButton("تبدیل PNG به JPG")
-	jpg_png_button = types.KeyboardButton("تبدیل JPG به PNG")
+	png_jpg_button = types.KeyboardButton("تبدیل به JPG")
+	jpg_png_button = types.KeyboardButton("تبدیل به PNG")
 	pdf_png_button = types.KeyboardButton("تبدیل PDF به عکس")
 	image_pdf_button = types.KeyboardButton("تبدیل عکس به PDF")
-	cancel_button = types.KeyboardButton("لغو")
+	image_webg_button = types.KeyboardButton("تبدیل به WEBG")
 	format_converter_keyboard.add(
 		png_jpg_button, jpg_png_button,
 		pdf_png_button, image_pdf_button,
-		cancel_button,
+		image_webg_button,
 	)
 	if not check_membership(message.from_user.id):
 		send_membership_message(message.chat.id)
-	else:	
-		bot.reply_to(message, "نوع تبدیل را انتخاب کنید", reply_markup= format_converter_keyboard)
+	else:
+		rich_message = types.InputRichMessage(
+			html= """
+			<h3>از منوی کیبورد، نوع تبدیل رو انتخاب کنید</h3>
+			<tg-button-row align="center">
+				<tg-button type="callback_data" data="cancel" style="danger">برگشت به منوی اصلی</tg-button>
+            </tg-button-row>
+
+			"""
+		)	
+		bot.send_rich_message(message.chat.id, rich_message, reply_markup= format_converter_keyboard)
 		bot.register_next_step_handler(message, check_convert_type)
 
 def check_convert_type(message):
-	if message.text not in ["تبدیل PNG به JPG", "تبدیل JPG به PNG", "تبدیل PDF به عکس", "تبدیل عکس به PDF", "لغو"]:
-		bot.reply_to(message, "لطفا از منوی زیر انتخاب کنید")
+	Cancel_markup = types.InlineKeyboardMarkup()
+	Cancel_button = types.InlineKeyboardButton("لغو فرایند", callback_data= "cancel", style= "danger")
+	Cancel_markup.add(Cancel_button)
+
+	if message.text not in ["تبدیل به PNG", "تبدیل به JPG", "تبدیل PDF به عکس", "تبدیل عکس به PDF", "تبدیل به WEBG"]:
+		bot.reply_to(message, "لطفا از منوی کیبورد انتخاب کنید", reply_markup= Cancel_markup)
 		bot.register_next_step_handler(message, check_convert_type)
-	elif message.text == "لغو":		
-		bot.clear_step_handler_by_chat_id(message.chat.id)
-		bot.send_message(message.chat.id, "ابزار مورد نظر را انتخاب کنید", reply_markup= keyboard)
 	else:
 		user_demand = message.text
 		if user_demand == "تبدیل عکس به PDF":
@@ -926,21 +997,31 @@ def check_convert_type(message):
 			get_user_content(message, user_demand)	
 
 def get_user_zipped_file(message, user_demand):
-	bot.reply_to(message, "فایل zip تصاویر خود را ارسال کنید. برای راهنمایی بیشتر /help ارسال کنید")
+	Cancel_markup = types.InlineKeyboardMarkup()
+	Cancel_button = types.InlineKeyboardButton("لغو فرایند", callback_data= "cancel", style= "danger")
+	Cancel_markup.add(Cancel_button)
+
+	bot.reply_to(message, "فایل zip تصاویر خود را ارسال کنید. ", reply_markup= Cancel_markup)
 	bot.register_next_step_handler(message, start_converting, user_demand)
 
 def get_user_content(message, user_demand):
-		bot.reply_to(message, "از قسمت File محتوای مورد نظر را به شکل Document ارسال کنید")
-		bot.register_next_step_handler(message, start_converting, user_demand)
+	Cancel_markup = types.InlineKeyboardMarkup()
+	Cancel_button = types.InlineKeyboardButton("لغو فرایند", callback_data= "cancel", style= "danger")
+	Cancel_markup.add(Cancel_button)
+
+	bot.reply_to(message, "از قسمت File محتوای مورد نظر را به شکل Document ارسال کنید", reply_markup= Cancel_markup)
+	bot.register_next_step_handler(message, start_converting, user_demand)
 
 def start_converting(message, user_demand):
+	Cancel_markup = types.InlineKeyboardMarkup()
+	Cancel_button = types.InlineKeyboardButton("لغو فرایند", callback_data= "cancel", style= "danger")
+	Cancel_markup.add(Cancel_button)
+	
 	if message.content_type not in ["document"] and message.content_type != "text":
-		bot.reply_to(message, "لطفا فایل خود را به شکل Document ارسال کنید")
-		get_user_content(message, user_demand)
-	elif message.content_type == "text" and message.text == "لغو":
-		bot.clear_step_handler_by_chat_id(message.chat.id)
-		bot.send_message(message.chat.id, "ابزار مورد نظر را انتخاب کنید", reply_markup= keyboard)	
-	elif user_demand == "تبدیل PNG به JPG":		
+		bot.reply_to(message, "فایل به شکل Document نیست!")
+		get_user_content(message, user_demand)	
+	
+	elif user_demand == "تبدیل به JPG":		
 		file_info = bot.get_file(message.document.file_id)
 		user_image_bytes = bot.download_file(file_info.file_path)
 		final_image = Backpack.png_jpg(user_image_bytes)
@@ -949,7 +1030,8 @@ def start_converting(message, user_demand):
 			bot.send_document(message.chat.id, final_image, reply_markup= keyboard)
 		else:
 			bot.send_message(message.chat.id, "خطا در تبدیل فرمت", reply_markup= keyboard)
-	elif user_demand == "تبدیل JPG به PNG":
+	
+	elif user_demand == "تبدیل به PNG":
 		file_info = bot.get_file(message.document.file_id)
 		user_image_bytes = bot.download_file(file_info.file_path)
 		final_image = Backpack.jpg_png(user_image_bytes)
@@ -958,6 +1040,17 @@ def start_converting(message, user_demand):
 			bot.send_document(message.chat.id, final_image, reply_markup= keyboard)
 		else:
 			bot.send_message(message.chat.id, "خطا در تبدیل فرمت", reply_markup= keyboard)
+
+	elif user_demand == "تبدیل به WEBG":
+		file_info = bot.get_file(message.document.file_id)
+		user_image_bytes = bot.download_file(file_info.file_path)
+		final_image = Backpack.image_webg(user_image_bytes)
+		if final_image is not None:
+			bot.send_chat_action(message.chat.id, "upload_document")
+			bot.send_document(message.chat.id, final_image, reply_markup= keyboard, disable_content_type_detection=True)
+		else:
+			bot.send_message(message.chat.id, "خطا در تبدیل فرمت", reply_markup= keyboard)		
+	
 	elif user_demand == "تبدیل PDF به عکس":
 		file_info = bot.get_file(message.document.file_id)
 		user_pdf = bot.download_file(file_info.file_path)
@@ -971,6 +1064,7 @@ def start_converting(message, user_demand):
 				bot.send_message(message.chat.id, "خطا در فشرده سازی و ارسال فایل")	
 		else:
 			bot.send_message(message.chat.id, "خطا در تبدیل فرمت", reply_markup= keyboard)
+	
 	elif user_demand == "تبدیل عکس به PDF":
 		file_info = bot.get_file(message.document.file_id)
 		user_zipped_file = bot.download_file(file_info.file_path)

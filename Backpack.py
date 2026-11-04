@@ -37,19 +37,7 @@ def bmi(weight, height):
     with open("BMImessage.txt", "r", encoding= "utf-8") as file1:
         bmi_message = file1.read()
     bmi = weight / (height ** 2)
-    
-    if bmi < 18.5:
-        return (f"BMI = {bmi:.3f}\nکمبود وزن\n{bmi_message}")
-    elif 18.5 <= bmi <= 24.9:
-        return (f"BMI = {bmi:.3f}\nوزن نرمال\n{bmi_message}")
-    elif 25 <= bmi <= 29.9:
-        return (f"BMI = {bmi:.3f}\nاضافه وزن\n{bmi_message}")
-    elif 30 <= bmi <= 34.9:
-        return (f"BMI = {bmi:.3f}\nچاقی درجه یک\n{bmi_message}")
-    elif 35 <= bmi <= 39.9:
-        return (f"BMI = {bmi:.3f}\nچاقی درجه دو\n{bmi_message}")
-    elif 40 <= bmi:
-        return (f"BMI = {bmi:.3f}\nچاقی درجه سه\n{bmi_message}")
+    return f"{bmi:.3f}"
 
 # Currency price tool (with API)
 
@@ -75,6 +63,7 @@ def get_market_data():
 currencies = {
     "گرام": "gram", "بیت کوین": "btc", "اتریوم": "eth", "ریپل": "xrp", "سولانا": "sol", "دوج کوین": "doge", "نات کوین": "not", "داگز": "dogs", "شیبا": "1k_shib", "کاردانو": "ada",
     "سونیک": "s", "گراف": "grt", "سویی": "sui", "ترون": "trx", "سیناپس": "syn", "تزوس": "xtz", "دش": "dash", "زن": "zen", "فایل کوین": "fil", "دای": "dai", "بیبی دوج": "1b_babydoge",
+    "لایت کوین": "ltc", "بایننس کوین": "bnb", "والتا": "a", "مونرو": "xmr", "تزوس": "xtz", "پولکادات": "dot", "اتم": "atom", "لایتر": "lit", "هدرا": "hbar", "اپتاس": "apt",
 }
 def APIprices(currency_name):
     data = get_market_data()
@@ -438,6 +427,18 @@ def jpg_png(user_image_bytes):
         return output
     except:
         return None
+
+def image_webg(user_image_bytes):
+    try:
+        img = Image.open(BytesIO(user_image_bytes))
+        output = BytesIO()
+        img.save(output, format="WEBP")
+        output.seek(0)
+        output.name = "converted.webp"
+        return output
+    except Exception as e:
+        print(e)
+        return None        
 
 def pdf_png(user_pdf):
    try: 
