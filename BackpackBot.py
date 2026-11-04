@@ -425,22 +425,19 @@ def choose_currency(message):
 			dogs_button, shiba_button, sonik_button
 	)
 
-	Cancel_markup = types.InlineKeyboardMarkup(row_width= 1)
-	Cancel_button = types.InlineKeyboardButton("برگشت به منوی اصلی", callback_data= "cancel", style= "danger")
-	suggest_button = types.InlineKeyboardButton("پیشنهاد ارز 💎", callback_data= "suggest_currency", style= "primary")
-	if is_premium(message.from_user.id) == False:
-		Cancel_markup.add(Cancel_button)
-	else:
-		Cancel_markup.add(
-			suggest_button,
-			Cancel_button,
-			)
-
 	if not check_membership(message.from_user.id):
 		send_membership_message(message.chat.id)
-	else:	
-		bot.reply_to(message, "ارز مورد نظر را از منوی زیر انتخاب کنید", reply_markup= currency_keyboard)
-		bot.send_message(message.chat.id, "اگر ارز مورد نظر در منو نیست ، اسم کامل آن را به فارسی ارسال کنید", reply_markup= Cancel_markup)
+	else:
+		rich_message = types.InputRichMessage(
+			html=f"""
+			<h3>ارز مدنظر را انتخاب کنید. اگر در منو نیست اسم کامل آن را به فارسی ارسال کنید</h3>
+			<tg-button-row align="center">
+                {"<tg-button type='callback_data' data='suggest_currency' style='primary'>پیشنهاد ارز 💎</tg-button>" if is_premium(message.from_user.id) == True else ""}
+				<tg-button type="callback_data" data="cancel" style="danger">برگشت به منوی اصلی</tg-button>
+            </tg-button-row>
+			"""
+		)
+		bot.send_rich_message(message.chat.id, rich_message, reply_markup= currency_keyboard)	
 		bot.register_next_step_handler(message, find_price)
 
 def find_price(message):
@@ -451,7 +448,14 @@ def find_price(message):
 
 	currency_name = message.text
 	price = Backpack.APIprices(currency_name)
-	bot.reply_to(message, price, reply_markup= Cancel_markup)
+	
+	if price == None:
+		bot.send_message(message.chat.id, "مشکلی در ساخت جدول به وجود اومد")
+	elif price == "اطلاعاتی درمورد این ارز ندارم":
+		bot.send_message(message.chat.id, "اطلاعاتی درمورد این ارز ندارم")
+	else:
+		bot.send_rich_message(message.chat.id, price)			
+	
 	bot.register_next_step_handler(message, find_price)
 
 @bot.callback_query_handler(func= lambda call: call.data == "suggest_currency")
@@ -462,7 +466,7 @@ def get_user_suggestion(call):
 
 	bot.answer_callback_query(call.id)
 	bot.clear_step_handler_by_chat_id(call.message.chat.id)
-	bot.edit_message_text("ارز پیشنهادی خود را ارسال کنید. در صورت تایید ، توی آپدیت بعدی به ربات اضافه میشه", call.message.chat.id, call.message.message_id, reply_markup= Cancel_markup)
+	bot.send_message(call.message.chat.id, "ارز پیشنهادی خود را ارسال کنید. در صورت تایید ، توی آپدیت بعدی به ربات اضافه میشه")
 	bot.register_next_step_handler(call.message, send_suggestion_to_admin)
 
 def send_suggestion_to_admin(message):
@@ -1428,7 +1432,12 @@ def show_premium_features(call):
 def group_currency_prices(message):
 	currency_name = message.text
 	price = Backpack.APIprices(currency_name)
-	bot.send_message(message.chat.id, price)
+	if price == None:
+		bot.send_message(message.chat.id, "مشکلی در ساخت جدول به وجود اومد")
+	elif price == "اطلاعاتی درمورد این ارز ندارم":
+		bot.send_message(message.chat.id, "اطلاعاتی درمورد این ارز ندارم")
+	else:
+		bot.send_rich_message(message.chat.id, price)
 
 
 # When users send irrelevant messages

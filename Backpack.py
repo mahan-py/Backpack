@@ -8,7 +8,6 @@ import string
 import random
 from datetime import date
 import datetime
-from deep_translator import GoogleTranslator
 import jdatetime
 from PIL import Image
 import pathlib
@@ -19,6 +18,8 @@ from natsort import natsorted
 import edge_tts
 import asyncio
 from decimal import Decimal
+import telebot
+from telebot import types
 
 # Average tool
  
@@ -85,18 +86,82 @@ def APIprices(currency_name):
             t_best_buy = data["stats"][f"{currencies[currency_name]}-usdt"]["bestBuy"]
             t_best_sell = data["stats"][f"{currencies[currency_name]}-usdt"]["bestSell"]
             t_change_percent = data["stats"][f"{currencies[currency_name]}-usdt"]["dayChange"]
-            return (f"💳قیمت به تومان:\n▫️خرید: {best_buy:,}\n▫️فروش: {best_sell:,}\n▫️تغییرات: {change_percent}\n\n💳قیمت به تتر:\n▫️خرید: {t_best_buy}\n▫️فروش: {t_best_sell}\n▫️تغییرات: {t_change_percent}")                           
+
+            ready_rich_message = types.InputRichMessage(
+                html=f"""
+                <h3>جدول قیمت 💰</h3> 
+                <table bordered>
+                    <tr>
+                        <th>{currency_name}</th>
+                        <th>تومان</th>
+                        <th>تتر</th>
+                    </tr>
+                    <tr>
+                        <td>خرید</td>
+                        <td>{best_buy:,}</td>
+                        <td>{t_best_buy}</td>
+                    </tr>
+                    <tr>
+                        <td>فروش</td>
+                        <td>{best_sell:,}</td>
+                        <td>{t_best_sell}</td>
+                    </tr>
+                    <tr>
+                        <td>تغییرات</td>
+                        <td>{change_percent}</td>
+                        <td>{t_change_percent}</td>
+                    </tr>
+                </table>
+                <tg-button-row align="center">
+                    <tg-button type="callback_data" data="cancel" style="danger">برگشت به منوی اصلی</tg-button>
+                </tg-button-row>            
+                """,
+                is_rtl= True
+            )
+
+            return ready_rich_message                           
+        
         except:
-            return "مشکلی پیش اومد"
+            return None
 
     elif currency_name == "تتر":
         try:
             best_buy = int(data["stats"]["usdt-rls"]["bestBuy"][:-1])
             best_sell = int(data["stats"]["usdt-rls"]["bestSell"][:-1])
             change_percent = data["stats"]["usdt-rls"]["dayChange"]
-            return (f"💳قیمت به تومان:\n▫️خرید: {best_buy:,}\n▫️فروش: {best_sell:,}\n▫️تغییرات: {change_percent}")                           
+
+            ready_rich_message = types.InputRichMessage(
+                html=f"""
+                <h3>جدول قیمت 💰</h3> 
+                <table bordered>
+                    <tr>
+                        <th>{currency_name}</th>
+                        <th>تومان</th>
+                    </tr>
+                    <tr>
+                        <td>خرید</td>
+                        <td>{best_buy:,}</td>
+                    </tr>
+                    <tr>
+                        <td>فروش</td>
+                        <td>{best_sell:,}</td>
+                    </tr>
+                    <tr>
+                        <td>تغییرات</td>
+                        <td>{change_percent}</td>
+                    </tr>
+                </table>
+                <tg-button-row align="center">
+                    <tg-button type="callback_data" data="cancel" style="danger">برگشت به منوی اصلی</tg-button>
+                </tg-button-row>            
+                """,
+                is_rtl= True
+            )
+
+            return ready_rich_message                           
+        
         except:
-            return "مشکلی پیش اومد"
+            return None
     
     elif currency_name == "دلار":
         try:
@@ -104,9 +169,32 @@ def APIprices(currency_name):
             soup = BeautifulSoup(site.text, "html.parser")
             rls_price = soup.find("span", attrs={"data-col": "info.last_trade.PDrCotVal"}).text
             toman_price = int(rls_price.replace(",", "")) // 10
-            return (f"💳قیمت دلار:\n{toman_price:,} تومان")
-        except:
-            return "مشکلی پیش اومد"
+
+            ready_rich_message = types.InputRichMessage(
+                html=f"""
+                <h3>جدول قیمت 💰</h3> 
+                <table bordered>
+                    <tr>
+                        <th>{currency_name}</th>
+                        <th>تومان</th>
+                    </tr>
+                    <tr>
+                        <td>خرید</td>
+                        <td>{toman_price:,}</td>
+                    </tr>
+                </table>
+                <tg-button-row align="center">
+                    <tg-button type="callback_data" data="cancel" style="danger">برگشت به منوی اصلی</tg-button>
+                </tg-button-row>            
+                """,
+                is_rtl= True
+            )
+
+            return ready_rich_message
+        
+        except Exception as e:
+            print(e)
+            return None
     
     elif currency_name == "طلا":
         try:
@@ -114,18 +202,64 @@ def APIprices(currency_name):
             soup = BeautifulSoup(site.text, "html.parser")
             rls_price = soup.find("span", attrs={"data-col": "info.last_trade.PDrCotVal"}).text
             toman_price = int(rls_price.replace(",", "")) // 10
-            return (f"💳قیمت طلا:\n{toman_price:,} تومان")
+
+            ready_rich_message = types.InputRichMessage(
+                html=f"""
+                <h3>جدول قیمت 💰</h3> 
+                <table bordered>
+                    <tr>
+                        <th>{currency_name}</th>
+                        <th>تومان</th>
+                    </tr>
+                    <tr>
+                        <td>خرید</td>
+                        <td>{toman_price:,}</td>
+                    </tr>
+                </table>
+                <tg-button-row align="center">
+                    <tg-button type="callback_data" data="cancel" style="danger">برگشت به منوی اصلی</tg-button>
+                </tg-button-row>            
+                """,
+                is_rtl= True
+            )
+
+            return ready_rich_message
+        
         except:
-            return "مشکلی پیش اومد"
+            return None
+
     elif currency_name == "یورو":
         try:
             site = requests.get("https://www.tgju.org/profile/price_eur")
             soup = BeautifulSoup(site.text, "html.parser")
             rls_price = soup.find("span", attrs={"data-col": "info.last_trade.PDrCotVal"}).text
             toman_price = int(rls_price.replace(",", "")) // 10
-            (f"💳قیمت یورو:\n{toman_price:,} تومان") 
+
+            ready_rich_message = types.InputRichMessage(
+                html=f"""
+                <h3>جدول قیمت 💰</h3> 
+                <table bordered>
+                    <tr>
+                        <th>{currency_name}</th>
+                        <th>تومان</th>
+                    </tr>
+                    <tr>
+                        <td>خرید</td>
+                        <td>{toman_price:,}</td>
+                    </tr>
+                </table>
+                <tg-button-row align="center">
+                    <tg-button type="callback_data" data="cancel" style="danger">برگشت به منوی اصلی</tg-button>
+                </tg-button-row>            
+                """,
+                is_rtl= True
+            )
+
+            return ready_rich_message 
+        
         except:
-            return "مشکلی پیش اومد"                                                                                  
+            return None                                                                                  
+    
     else:
         return "اطلاعاتی درمورد این ارز ندارم"
 
