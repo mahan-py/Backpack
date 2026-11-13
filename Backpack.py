@@ -428,7 +428,7 @@ def jpg_png(user_image_bytes):
     except:
         return None
 
-def image_webg(user_image_bytes):
+def image_webp(user_image_bytes):
     try:
         img = Image.open(BytesIO(user_image_bytes))
         output = BytesIO()
@@ -513,4 +513,4 @@ async def text_to_speech(text, language, gender):
         audio.name = "voice.mp3"
         return audio
     except:
-        return "مشکلی پیش اومد"                                            
+        return "مشکلی پیش اومد"   

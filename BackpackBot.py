@@ -960,11 +960,11 @@ def get_convert_type(message):
 	jpg_png_button = types.KeyboardButton("تبدیل به PNG")
 	pdf_png_button = types.KeyboardButton("تبدیل PDF به عکس")
 	image_pdf_button = types.KeyboardButton("تبدیل عکس به PDF")
-	image_webg_button = types.KeyboardButton("تبدیل به WEBG")
+	image_webp_button = types.KeyboardButton("تبدیل به WEBP")
 	format_converter_keyboard.add(
 		png_jpg_button, jpg_png_button,
 		pdf_png_button, image_pdf_button,
-		image_webg_button,
+		image_webp_button,
 	)
 	if not check_membership(message.from_user.id):
 		send_membership_message(message.chat.id)
@@ -986,7 +986,7 @@ def check_convert_type(message):
 	Cancel_button = types.InlineKeyboardButton("لغو فرایند", callback_data= "cancel", style= "danger")
 	Cancel_markup.add(Cancel_button)
 
-	if message.text not in ["تبدیل به PNG", "تبدیل به JPG", "تبدیل PDF به عکس", "تبدیل عکس به PDF", "تبدیل به WEBG"]:
+	if message.text not in ["تبدیل به PNG", "تبدیل به JPG", "تبدیل PDF به عکس", "تبدیل عکس به PDF", "تبدیل به WEBP"]:
 		bot.reply_to(message, "لطفا از منوی کیبورد انتخاب کنید", reply_markup= Cancel_markup)
 		bot.register_next_step_handler(message, check_convert_type)
 	else:
@@ -1041,10 +1041,10 @@ def start_converting(message, user_demand):
 		else:
 			bot.send_message(message.chat.id, "خطا در تبدیل فرمت", reply_markup= keyboard)
 
-	elif user_demand == "تبدیل به WEBG":
+	elif user_demand == "تبدیل به WEBP":
 		file_info = bot.get_file(message.document.file_id)
 		user_image_bytes = bot.download_file(file_info.file_path)
-		final_image = Backpack.image_webg(user_image_bytes)
+		final_image = Backpack.image_webp(user_image_bytes)
 		if final_image is not None:
 			bot.send_chat_action(message.chat.id, "upload_document")
 			bot.send_document(message.chat.id, final_image, reply_markup= keyboard, disable_content_type_detection=True)
