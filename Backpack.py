@@ -436,9 +436,44 @@ def image_webp(user_image_bytes):
         output.seek(0)
         output.name = "converted.webp"
         return output
+    except:
+        return None
+
+
+
+def compress_image(user_image_bytes):
+    try:
+        image = Image.open(BytesIO(user_image_bytes))
+        image_format = image.format
+        output = BytesIO()
+        output2 = BytesIO()
+
+        if image_format == "PNG":
+            image2 = image.quantize(colors=256, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.FLOYDSTEINBERG)
+            image2.save(output2, format="PNG", optimize=True)
+            output2.seek(0)
+            output2.name = f"compressed.{image_format.lower()}"
+            return output2
+
+        if image_format == "JPEG":
+            image = image.convert("RGB")
+            image.save(output, format="JPEG", quality=65, optimize=True)
+
+        elif image_format == "WEBP":
+            image.save(output, format="WEBP", quality=65, method=6)
+
+        else:
+            image.save(output, format=image_format)
+
+        output.seek(0)
+        output.name = f"compressed.{image_format.lower()}"
+
+        return output
+
     except Exception as e:
         print(e)
-        return None        
+        return None
+                
 
 def pdf_png(user_pdf):
    try: 

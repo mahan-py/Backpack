@@ -278,13 +278,14 @@ text_to_speech_button = types.KeyboardButton("متن به صوت🎙")
 user_info_button = types.KeyboardButton("تلگرام من👤")
 inline_keyboard_maker_button = types.KeyboardButton("دکمه شیشه ای🍷")
 buy_premium_button = types.InlineKeyboardButton("پریمیوم💎")
+image_compress_button = types.InlineKeyboardButton("کاهش حجم عکس⬇️")
 keyboard.add(
 	average_button, bmi_button,
 	currency_button, password_button,
 	date_difference_button, lottery_button, 
 	format_converter_button, text_to_speech_button, 
 	user_info_button, inline_keyboard_maker_button,
-	buy_premium_button,
+	buy_premium_button, image_compress_button,
 )
 
 # Starting the bot for the first time or reaction to /start
@@ -1519,6 +1520,43 @@ def show_premium_info(call):
 def show_premium_features(call):
 	bot.answer_callback_query(call.id)
 	bot.copy_message(call.message.chat.id, "@Backpacktool", 25)
+
+@bot.message_handler(func= lambda message: message.text == "کاهش حجم عکس⬇️" and message.chat.type == "private")	
+def get_picture(message):
+	Cancel_markup = types.InlineKeyboardMarkup()
+	Cancel_button = types.InlineKeyboardButton("لغو فرایند", callback_data= "cancel", style= "danger")
+	Cancel_markup.add(Cancel_button)
+	
+	if not check_membership(message.from_user.id):
+		send_membership_message(message.chat.id)
+	else:
+		bot.reply_to(message, "از قسمت فایل ، عکس مورد نظر را به شکل Document ارسال کنید", reply_markup= Cancel_markup)
+		bot.register_next_step_handler(message, check_picture)
+
+def check_picture(message):
+	Cancel_markup = types.InlineKeyboardMarkup()
+	Cancel_button = types.InlineKeyboardButton("لغو فرایند", callback_data= "cancel", style= "danger")
+	Cancel_markup.add(Cancel_button)
+
+	if message.content_type not in ["document"] and message.content_type != "text":
+		bot.reply_to(message, "لطفا عکس خود را از قسمت Document ارسال کنید", reply_markup= Cancel_markup)
+		bot.register_next_step_handler(message, check_picture)
+	
+	elif message.content_type == "text":
+		bot.reply_to(message, "فقط عکس ارسال کنید!", reply_markup= Cancel_markup)
+		bot.register_next_step_handler(message, check_picture)
+
+	else:
+		file_info = bot.get_file(message.document.file_id)
+		user_image_bytes = bot.download_file(file_info.file_path)
+		bot.reply_to(message, "درحال پردازش و کاهش حجم ✅")
+		final_image = Backpack.compress_image(user_image_bytes)
+		if final_image is not None:
+			bot.send_chat_action(message.chat.id, "upload_document")
+			bot.send_document(message.chat.id, final_image, disable_content_type_detection=True ,reply_markup= keyboard)
+		else:
+			bot.send_message(message.chat.id, "خطا در کاهش حجم", reply_markup= keyboard)				
+
 
 # Group message handler zone
 # Here, we handle messages those have sent by group users
