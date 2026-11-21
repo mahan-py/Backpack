@@ -5,11 +5,12 @@ from telebot.apihelper import ApiTelegramException
 import Backpack
 import sqlite3
 import time
-from datetime import date
+from datetime import date, timezone, timedelta
 from dateutil.relativedelta import relativedelta
 from pathlib import Path
 import datetime
-
+from decimal import Decimal
+from apscheduler.schedulers.background import BackgroundScheduler
 
 # Some messages were too long so i created txt files and wrote them there
 with open("Bot_help.txt", "r", encoding= "utf-8") as file2:
@@ -61,6 +62,7 @@ def restart_checking_membership(call):
 # Base dir of database
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "bot.db"
+PADB_PATH = BASE_DIR / "price_alert.db"
 
 conn = sqlite3.connect(DB_PATH, timeout=10)
 cursor = conn.cursor()
@@ -78,8 +80,45 @@ cursor.execute("""
 conn.commit()
 conn.close()
 
+conn2 = sqlite3.connect(PADB_PATH, timeout=10)
+cursor = conn2.cursor()
+cursor.execute("""
+        CREATE TABLE IF NOT EXISTS price_alerts (
+
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            user_id INTEGER NOT NULL,
+
+            coin TEXT NOT NULL,
+
+            target_price REAL NOT NULL,
+
+            condition TEXT NOT NULL
+            CHECK(condition IN ('above', 'below')),
+
+            is_active INTEGER NOT NULL DEFAULT 1
+            CHECK(is_active IN (0, 1)),
+
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+            expiry_at TEXT DEFAULT NULL
+
+        )
+    """)
+
+cursor.execute("""
+    CREATE INDEX IF NOT EXISTS idx_alerts_active
+    ON price_alerts(is_active)
+""")
+
+conn2.commit()
+conn2.close()
+
 def get_database():
 	return sqlite3.connect(DB_PATH, timeout= 10)
+
+def get_price_alert_database():
+	return sqlite3.connect(PADB_PATH, timeout=10)	
 
 def is_admin(user_id):
 	conn = get_database()
@@ -493,9 +532,12 @@ def choose_currency(message):
 			html=f"""
 			<h3>ارز مدنظر را انتخاب کنید. اگر در منو نیست اسم کامل آن را به فارسی ارسال کنید</h3>
 			<tg-button-row align="center">
-                {"<tg-button type='callback_data' data='suggest_currency' style='primary'>پیشنهاد ارز 💎</tg-button>" if is_premium(message.from_user.id) == True else ""}
-				<tg-button type="callback_data" data="cancel" style="danger">برگشت به منوی اصلی</tg-button>
+                <tg-button type='callback_data' data='suggest_currency' style='primary'>پیشنهاد ارز 💎</tg-button>
+				<tg-button type="callback_data" data="user_price_alerts" style="primary">هشدار های فعال💎</tg-button>
             </tg-button-row>
+			<tg-button-row align="center">
+				<tg-button type="callback_data" data="cancel" style="danger">برگشت به منوی اصلی</tg-button>
+			</tg-button-row>
 			"""
 		)
 		bot.send_rich_message(message.chat.id, rich_message, reply_markup= currency_keyboard)	
@@ -511,9 +553,9 @@ def find_price(message):
 	price = Backpack.APIprices(currency_name)
 	
 	if price == None:
-		bot.send_message(message.chat.id, "مشکلی در ساخت جدول به وجود اومد")
+		bot.send_message(message.chat.id, "مشکلی در ساخت جدول به وجود اومد", reply_markup=Cancel_markup)
 	elif price == "اطلاعاتی درمورد این ارز ندارم":
-		bot.send_message(message.chat.id, "اطلاعاتی درمورد این ارز ندارم")
+		bot.send_message(message.chat.id, "اطلاعاتی درمورد این ارز ندارم", reply_markup=Cancel_markup)
 	else:
 		bot.send_rich_message(message.chat.id, price)			
 	
@@ -524,15 +566,296 @@ def get_user_suggestion(call):
 	Cancel_markup = types.InlineKeyboardMarkup(row_width= 1)
 	Cancel_button = types.InlineKeyboardButton("برگشت به منوی اصلی", callback_data= "cancel", style= "danger")
 	Cancel_markup.add(Cancel_button)
-
-	bot.answer_callback_query(call.id)
-	bot.clear_step_handler_by_chat_id(call.message.chat.id)
-	bot.send_message(call.message.chat.id, "ارز پیشنهادی خود را ارسال کنید. در صورت تایید ، توی آپدیت بعدی به ربات اضافه میشه")
-	bot.register_next_step_handler(call.message, send_suggestion_to_admin)
+	
+	if is_premium(call.from_user.id) == False:
+		bot.answer_callback_query(call.id, "این قابلیت مربوط به کاربران پریمیوم ربات است",show_alert=True)
+	
+	elif is_premium(call.from_user.id) == True:
+		bot.answer_callback_query(call.id)
+		bot.clear_step_handler_by_chat_id(call.message.chat.id)
+		bot.send_message(call.message.chat.id, "ارز پیشنهادی خود را ارسال کنید. در صورت تایید ، توی آپدیت بعدی به ربات اضافه میشه")
+		bot.register_next_step_handler(call.message, send_suggestion_to_admin)
 
 def send_suggestion_to_admin(message):
 	bot.send_message(5835989996, f"پشنهاد ارز از طرف: {message.from_user.id}\nنام کاربری: {message.from_user.username}\nارز پیشنهادی: {message.text}")
 	bot.reply_to(message, "ارز پیشنهادی شما با موفقیت ارسال شد ✅", reply_markup= keyboard)
+
+@bot.callback_query_handler(func= lambda call: call.data.startswith("price_alert_"))
+def add_price_alert(call):
+
+	if is_premium(call.from_user.id) == False:
+		bot.answer_callback_query(call.id, "این قابلیت مربوط به کاربران پریمیوم ربات است", show_alert=True)
+	elif is_premium(call.from_user.id) == True:
+		bot.answer_callback_query(call.id)
+		bot.clear_step_handler_by_chat_id(call.message.chat.id)
+		_, _2, currency_name = call.data.split("_")
+		currency_symbol = Backpack.currencies[currency_name]
+
+		price_alert_markup = types.InlineKeyboardMarkup(row_width= 1)
+		Cancel_button = types.InlineKeyboardButton("لغو", callback_data= "cancel", style= "danger")
+		above_button = types.InlineKeyboardButton("شکست قیمت بالاتر", callback_data= f"above_{currency_name}", style="success")
+		below_button = types.InlineKeyboardButton("شکست قیمت پایین تر", callback_data= f"below_{currency_name}", style="primary")
+		price_alert_markup.add(
+			above_button,
+			below_button,
+			Cancel_button,
+		)
+		bot.send_message(call.message.chat.id, f"نام ارز: {currency_name}\nنماد ارز: {currency_symbol}\nاز دکمه های زیر استفاده کنید", reply_markup= price_alert_markup)	
+
+
+@bot.callback_query_handler(func= lambda call: call.data.startswith(("above_", "below_")))
+def get_target_price(call):
+	condition, currency_name = call.data.split("_")
+	currency_symbol = Backpack.currencies[currency_name]
+	bot.answer_callback_query(call.id)
+
+	target_price_markup = types.InlineKeyboardMarkup(row_width=1)
+	Cancel_button = types.InlineKeyboardButton("لغو", callback_data= "cancel", style= "danger")
+	back_button = types.InlineKeyboardButton("مرحله قبل", callback_data=f"price_alert_{currency_name}", style="primary")
+	target_price_markup.add(
+		back_button,
+		Cancel_button,
+	)
+	if condition == "above":
+		bot.send_message(call.message.chat.id, f"قیمت هدف خود را برحسب تتر یا همان دلار و بدون هیچ علامتی ارسال کنید. زمانی که قیمت ارز {currency_name} از قیمتی که شما تعیین میکنید بالاتر بره ربات واستون پیام ارسال میکنه", reply_markup= target_price_markup)
+		bot.register_next_step_handler(call.message, set_price_alert, currency_symbol, condition)
+
+	elif condition == "below":
+		bot.send_message(call.message.chat.id, f"قیمت هدف خود را برحسب تتر یا همان دلار و بدون هیچ علامتی ارسال کنید. زمانی که قیمت ارز {currency_name} ارز قیمتی که شما تعیین میکنید پایین تر بره ربات واستون پیام ارسال میکنه", reply_markup= target_price_markup)
+		bot.register_next_step_handler(call.message, set_price_alert, currency_symbol, condition)
+
+def set_price_alert(message, currency_symbol, condition):
+	data = Backpack.get_market_data()
+	t_best_sell = data["stats"][f"{currency_symbol}-usdt"]["bestSell"]
+	t_best_buy = data["stats"][f"{currency_symbol}-usdt"]["bestBuy"]
+     
+
+	if condition == "below" and Decimal(message.text) >= Decimal(t_best_buy):
+		bot.send_message(message.chat.id, "قیمت هدف باید پایین تر از قیمت الان این ارز باشد. دوباره ارسال کنید")
+		bot.register_next_step_handler(message, set_price_alert, currency_symbol, condition)
+
+	elif condition == "above" and Decimal(message.text) <= Decimal(t_best_buy):
+		bot.send_message(message.chat.id, "قیمت هدف باید بالاتر از قیمت الان این ارز باشد. دوباره ارسال کنید")
+		bot.register_next_step_handler(message, set_price_alert, currency_symbol, condition)
+
+	
+	else:
+		created_at = datetime.datetime.now(timezone.utc)
+		expiry_at = created_at + timedelta(days=5)
+		conn = get_price_alert_database()
+		cursor = conn.cursor()
+		try:
+			cursor.execute("""
+				INSERT INTO price_alerts (
+					user_id,
+					coin,
+					target_price,
+					condition,
+					is_active,
+					created_at,
+					expiry_at
+				)
+				VALUES (?, ?, ?, ?, ?, ?, ?)
+			""", (
+				message.from_user.id,
+				currency_symbol,
+				float(message.text),
+				condition,
+				1,
+				created_at.isoformat(),
+				expiry_at.isoformat()
+			))
+			alert_id = cursor.lastrowid
+			conn.commit()
+			bot.send_message(
+				message.chat.id,
+				f"✅ هشدار قیمت با موفقیت ثبت شد.\n\n"
+				f"🔹 شناسه هشدار: {alert_id}\n"
+				f"🔹 ارز: {currency_symbol}\n"
+				f"🔹 قیمت هدف: {message.text}\n"
+				f"🔹 شرط: {condition}\n"
+				f"🔹 تاریخ انقضا: {expiry_at.strftime('%Y-%m-%d')}",
+				reply_markup= keyboard
+			)
+
+		except Exception as e:
+			conn.rollback()
+			print("Price alert database error:", e)
+
+		finally:
+			conn.close()
+
+
+
+def check_price_alerts():
+    data = Backpack.get_market_data()
+    conn = get_price_alert_database()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            SELECT id, user_id, coin, target_price,
+                   condition, expiry_at
+            FROM price_alerts
+            WHERE is_active = 1
+        """)
+        alerts = cursor.fetchall()
+        now = datetime.datetime.now(timezone.utc)
+        for alert in alerts:
+            alert_id, user_id, coin, target_price, condition, expiry_at = alert
+
+            if expiry_at:
+                expiry_date = datetime.datetime.fromisoformat(expiry_at)
+				
+                if expiry_date.tzinfo is None:
+                    expiry_date = expiry_date.replace(tzinfo=timezone.utc)
+
+                if now >= expiry_date:
+                    cursor.execute("""
+                        UPDATE price_alerts
+                        SET is_active = 0
+                        WHERE id = ?
+                    """, (alert_id,))
+
+                    continue
+
+            coin_data = data["stats"].get(f"{coin}-usdt")
+
+            if not coin_data:
+                continue
+
+            current_price = Decimal(str(coin_data["bestBuy"]))
+            target_price = Decimal(str(target_price))
+
+            if condition == "above":
+                triggered = current_price >= target_price
+
+            elif condition == "below":
+                triggered = current_price <= target_price
+
+            else:
+                continue
+
+            if triggered:
+
+                condition_text = (
+                    "بالاتر از" if condition == "above"
+                    else "پایین‌تر از"
+                )
+
+                try:
+
+                    bot.send_message(
+                        user_id,
+                        f"🔔 هشدار قیمت ارز دیجیتال\n\n"
+                        f"🪙 ارز: {coin.upper()}\n"
+                        f"💰 قیمت فعلی: {current_price:,}\n"
+                        f"🎯 قیمت هدف: {target_price:,}\n\n"
+                        f"قیمت این ارز به {condition_text} "
+                        f"قیمت تعیین‌شده توسط شما رسیده است."
+                    )
+
+                    cursor.execute("""
+                        UPDATE price_alerts
+                        SET is_active = 0
+                        WHERE id = ?
+                    """, (alert_id,))
+
+                except Exception as e:
+                    print(f"Message error for user {user_id}: {e}")
+
+        cursor.execute("""
+            DELETE FROM price_alerts
+            WHERE is_active = 0
+        """)
+        conn.commit()
+
+    except Exception as e:
+        conn.rollback()
+        print("Price alert checker error:", e)
+
+    finally:
+        conn.close()
+
+
+@bot.callback_query_handler(func= lambda call: call.data == "user_price_alerts")
+def send_user_alerts(call):
+	if is_premium(call.from_user.id) == False:
+		bot.answer_callback_query(call.id, "این قابلیت برای کاربران پریمیوم ربات است", show_alert=True)
+	elif is_premium(call.from_user.id) == True:
+		bot.answer_callback_query(call.id)
+		bot.clear_step_handler_by_chat_id(call.message.chat.id)
+		show_price_alerts(call.from_user.id, call.message.chat.id)
+
+def show_price_alerts(user_id, chat_id):
+
+    conn = get_price_alert_database()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            SELECT id, coin, target_price, condition,
+                   created_at, expiry_at
+            FROM price_alerts
+            WHERE user_id = ? AND is_active = 1
+            ORDER BY created_at DESC
+        """, (user_id,))
+
+        alerts = cursor.fetchall()
+
+        if not alerts:
+            bot.send_message(
+                message.chat.id,
+                "📭 شما در حال حاضر هیچ هشدار قیمت فعالی ندارید."
+            )
+            return
+
+        text = "🔔 <b>هشدارهای قیمت فعال شما</b>\n"
+        text += "━━━━━━━━━━━━━━━━━━\n\n"
+
+        for alert in alerts:
+            alert_id, coin, target_price, condition, created_at, expiry_at = alert
+            condition_text = (
+                "📈 بالاتر از" if condition == "above"
+                else "📉 پایین‌تر از"
+            )
+
+            created_date = datetime.datetime.fromisoformat(
+                created_at
+            ).strftime("%Y/%m/%d")
+
+            expiry_date = datetime.datetime.fromisoformat(
+                expiry_at
+            ).strftime("%Y/%m/%d")
+
+            text += (
+                f"🪙 <b>{coin.upper()}</b>\n"
+                f"🔹 شناسه هشدار: <code>{alert_id}</code>\n"
+                f"🎯 قیمت هدف: <b>{target_price:,}</b>\n"
+                f"⚙️ شرط: {condition_text}\n"
+                f"📅 تاریخ ثبت: {created_date}\n"
+                f"⏳ تاریخ انقضا: {expiry_date}\n"
+                f"━━━━━━━━━━━━━━━━━━\n\n"
+            )
+
+        text += f"📊 تعداد هشدارهای فعال: <b>{len(alerts)}</b>"
+
+        bot.send_message(
+            chat_id,
+            text,
+            parse_mode="HTML",
+			reply_markup= keyboard
+        )
+
+    except Exception as e:
+        print("Show price alerts error:", e)
+
+        bot.send_message(
+        	chat_id,
+            "❌ هنگام دریافت هشدارها مشکلی پیش آمد.",
+			reply_markup= keyboard
+        )
+
+    finally:
+        conn.close()
 
 # Password generator
 @bot.message_handler(func= lambda message: message.text == "تولید رمز🔑" and message.chat.type == "private")
@@ -1578,4 +1901,15 @@ def echo_all(message):
 	bot.reply_to(message, "از منوی زیر ابزار مورد نظر را انتخاب کنید\nبرای راهنمایی /help را ارسال کنید", reply_markup= keyboard)
 
 # Running the bot
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(
+    check_price_alerts,
+    trigger="interval",
+    minutes=5,
+    max_instances=1,
+    coalesce=True
+)
+scheduler.start()
+
 bot.infinity_polling()

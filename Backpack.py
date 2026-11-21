@@ -103,6 +103,12 @@ def APIprices(currency_name):
                 </table>
                 <tg-button-row align="center">
                     <tg-button type="callback_data" data="cancel" style="danger">برگشت به منوی اصلی</tg-button>
+                </tg-button-row>
+                <tg-button-row align="center">
+                    <tg-button type="callback_data" data="price_alert_{currency_name}" style="primary">تنظیم هشدار💎</tg-button>
+                </tg-button-row>
+                <tg-button-row align="center">
+                    <tg-button type="callback_data" data="user_price_alerts" style="primary">هشدار های فعال💎</tg-button>
                 </tg-button-row>            
                 """,
                 is_rtl= True
