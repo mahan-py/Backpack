@@ -65,6 +65,8 @@ currencies = {
     "سونیک": "s", "گراف": "grt", "سویی": "sui", "ترون": "trx", "سیناپس": "syn", "تزوس": "xtz", "دش": "dash", "زن": "zen", "فایل کوین": "fil", "دای": "dai", "بیبی دوج": "1b_babydoge",
     "لایت کوین": "ltc", "بایننس کوین": "bnb", "والتا": "a", "مونرو": "xmr", "تزوس": "xtz", "پولکادات": "dot", "اتم": "atom", "لایتر": "lit", "هدرا": "hbar", "اپتاس": "apt",
 }
+reverse_currencies = {v: k for k, v in currencies.items()}
+
 def APIprices(currency_name):
     data = get_market_data()
     if currency_name in currencies:

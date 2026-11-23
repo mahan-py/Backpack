@@ -295,10 +295,11 @@ def set_premium_user(message):
 	admin_management_keyboard = types.InlineKeyboardMarkup(row_width= 1)
 	go_back_button = types.InlineKeyboardButton("برگشت به منو", callback_data= "admin_panel", style= "danger")
 	admin_management_keyboard.add(go_back_button)
-
+	user_id = int(message.text)
 	try:
 		premium_until = activate_premium(int(message.text))
 		bot.send_message(message.chat.id, f"اشتراک پریمیوم با موفقیت فعال شد✅\n\nآیدی کاربر: `{message.text}`\nنوع اشتراک: یک ماهه\nتاریخ انقضا: {premium_until}", parse_mode= "Markdown", reply_markup= admin_management_keyboard)
+		bot.send_message(user_id, f"اشتراک پریمیوم برای شما توسط ادمین ربات فعال شد✅\n\nآیدی شما: `{message.text}`\nنوع اشتراک: یک ماهه\nتاریخ انقضا: {premium_until}", parse_mode= "Markdown")
 	except:
 		bot.send_message(message.chat.id, "خطا در فعال سازی اشتراک پریمیوم ❌", reply_markup= admin_management_keyboard)
 					
@@ -627,8 +628,8 @@ def get_target_price(call):
 def set_price_alert(message, currency_symbol, condition):
 	data = Backpack.get_market_data()
 	t_best_sell = data["stats"][f"{currency_symbol}-usdt"]["bestSell"]
-	t_best_buy = data["stats"][f"{currency_symbol}-usdt"]["bestBuy"]
-     
+	t_best_buy = data["stats"][f"{currency_symbol}-usdt"]["bestBuy"] 
+	currency_name = Backpack.reverse_currencies[f"{currency_symbol}"]
 
 	if condition == "below" and Decimal(message.text) >= Decimal(t_best_buy):
 		bot.send_message(message.chat.id, "قیمت هدف باید پایین تر از قیمت الان این ارز باشد. دوباره ارسال کنید")
@@ -671,7 +672,8 @@ def set_price_alert(message, currency_symbol, condition):
 				message.chat.id,
 				f"✅ هشدار قیمت با موفقیت ثبت شد.\n\n"
 				f"🔹 شناسه هشدار: {alert_id}\n"
-				f"🔹 ارز: {currency_symbol}\n"
+				f"🔹 نام ارز: {currency_name}\n"
+				f"🔹 نماد ارز: {currency_symbol}\n"
 				f"🔹 قیمت هدف: {message.text}\n"
 				f"🔹 شرط: {condition}\n"
 				f"🔹 تاریخ انقضا: {expiry_at.strftime('%Y-%m-%d')}",
@@ -747,7 +749,8 @@ def check_price_alerts():
                     bot.send_message(
                         user_id,
                         f"🔔 هشدار قیمت ارز دیجیتال\n\n"
-                        f"🪙 ارز: {coin.upper()}\n"
+						f"⚜️نام ارز: {Backpack.reverse_currencies[coin]}\n"
+                        f"🪙 نماد ارز: {coin.upper()}\n"
                         f"💰 قیمت فعلی: {current_price:,}\n"
                         f"🎯 قیمت هدف: {target_price:,}\n\n"
                         f"قیمت این ارز به {condition_text} "
@@ -803,16 +806,18 @@ def show_price_alerts(user_id, chat_id):
 
         if not alerts:
             bot.send_message(
-                message.chat.id,
-                "📭 شما در حال حاضر هیچ هشدار قیمت فعالی ندارید."
+                chat_id,
+                "📭 شما در حال حاضر هیچ هشدار قیمت فعالی ندارید.",
+                reply_markup=keyboard
             )
             return
 
         text = "🔔 <b>هشدارهای قیمت فعال شما</b>\n"
-        text += "━━━━━━━━━━━━━━━━━━\n\n"
+        text += "━━━━━━━━━━━━━━━━━━<br><br>"
 
         for alert in alerts:
             alert_id, coin, target_price, condition, created_at, expiry_at = alert
+
             condition_text = (
                 "📈 بالاتر از" if condition == "above"
                 else "📉 پایین‌تر از"
@@ -827,35 +832,87 @@ def show_price_alerts(user_id, chat_id):
             ).strftime("%Y/%m/%d")
 
             text += (
-                f"🪙 <b>{coin.upper()}</b>\n"
-                f"🔹 شناسه هشدار: <code>{alert_id}</code>\n"
-                f"🎯 قیمت هدف: <b>{target_price:,}</b>\n"
-                f"⚙️ شرط: {condition_text}\n"
-                f"📅 تاریخ ثبت: {created_date}\n"
-                f"⏳ تاریخ انقضا: {expiry_date}\n"
-                f"━━━━━━━━━━━━━━━━━━\n\n"
+				f"⚜️ نام ارز: {Backpack.reverse_currencies[coin]}<br>"
+				f"🪙 نماد ارز: <b>{coin.upper()}</b><br>"
+				f"🔹 شناسه هشدار: <code>{alert_id}</code><br>"
+				f"🎯 قیمت هدف: <b>{target_price} تتر</b><br>"
+				f"⚙️ شرط: {condition_text}<br>"
+				f"📅 تاریخ ثبت: {created_date}<br>"
+				f"⏳ تاریخ انقضا: {expiry_date}<br>"
+			)
+
+            text += (
+                f'<tg-button-row align="center">'
+                f'<tg-button type="callback_data" '
+                f'data="delete_alert_{alert_id}" '
+                f'style="danger">🗑 حذف هشدار</tg-button>'
+                f'</tg-button-row><br>'
+				f"━━━━━━━━━━━━━━━━━━<br>"
             )
+
+
 
         text += f"📊 تعداد هشدارهای فعال: <b>{len(alerts)}</b>"
 
-        bot.send_message(
+        bot.send_rich_message(
             chat_id,
-            text,
-            parse_mode="HTML",
-			reply_markup= keyboard
+            telebot.types.InputRichMessage(
+                html=text,
+                is_rtl=True
+            ),
+            reply_markup=keyboard
         )
 
     except Exception as e:
         print("Show price alerts error:", e)
 
         bot.send_message(
-        	chat_id,
+            chat_id,
             "❌ هنگام دریافت هشدارها مشکلی پیش آمد.",
-			reply_markup= keyboard
+            reply_markup=keyboard
         )
 
     finally:
         conn.close()
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("delete_alert_"))
+def delete_alert(call):
+
+    _, _, alert_id = call.data.split("_")
+    alert_id = int(alert_id)
+
+    user_id = call.from_user.id
+    conn = get_price_alert_database()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            DELETE FROM price_alerts
+            WHERE id = ? AND user_id = ?
+        """, (alert_id, user_id))
+
+        conn.commit()
+
+        bot.answer_callback_query(
+            call.id,
+            "✅ هشدار با موفقیت حذف شد.",
+			show_alert=True
+        )
+        
+
+    except Exception as e:
+        print("Delete alert error:", e)
+        bot.answer_callback_query(
+            call.id,
+            "❌ مشکلی در حذف هشدار پیش آمد.",
+			show_alert=True
+        )
+
+    finally:
+        conn.close()
+    
+    bot.delete_message(call.message.chat.id, call.message.message_id)
+    show_price_alerts(user_id, call.message.chat.id)
 
 # Password generator
 @bot.message_handler(func= lambda message: message.text == "تولید رمز🔑" and message.chat.type == "private")
